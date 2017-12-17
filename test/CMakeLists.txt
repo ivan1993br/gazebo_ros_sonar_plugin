@@ -23,6 +23,7 @@ rock_testsuite(Attenuation_core Attenuation_test.cpp TestHelper.cpp
     LIBS ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
     DEPS_PKGCONFIG opencv)
 
-rock_testsuite(DynamicCubeMap_core DynamicCubeMap_test.cpp
+rock_testsuite(DynamicCubeMap_core DynamicCubeMap_test.cpp TestHelper.cpp
+    DEPS normal_depth_map
     LIBS ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
-    DEPS_PKGCONFIG openscenegraph)
+    DEPS_PKGCONFIG openscenegraph opencv)
