@@ -20,8 +20,8 @@
 #include <normal_depth_map/ImageViewerCaptureTool.hpp>
 #include "TestHelper.hpp"
 
-#define SHADER_PATH_FRAG "normal_depth_map/shaders/normalDepthMap.frag"
-#define SHADER_PATH_VERT "normal_depth_map/shaders/normalDepthMap.vert"
+#define SHADER_PATH_FRAG "normal_depth_map/shaders/normalDepthMap1.frag"
+#define SHADER_PATH_VERT "normal_depth_map/shaders/normalDepthMap1.vert"
 
 #define BOOST_TEST_MODULE "DynamicCubeMap_test"
 #include <boost/test/unit_test.hpp>
@@ -69,12 +69,12 @@ osg::ref_ptr<osg::Group> _create_scene() {
     geode->addDrawable(shape.get());
 
     // box
-    shape = new osg::ShapeDrawable(new osg::Box(osg::Vec3(3.0f, 0.0f, 0.0f), 2 * radius));
+    shape = new osg::ShapeDrawable(new osg::Cone(osg::Vec3(0.0f, 0.0f, -3.0f), radius, height));
     shape->setColor(osg::Vec4(0.4f, 0.9f, 0.3f, 1.0f));
     geode->addDrawable(shape.get());
 
-    // cone
-    shape = new osg::ShapeDrawable(new osg::Cylinder(osg::Vec3(0.0f, 0.0f, -3.0f), radius, height));
+    // cylinder
+    shape = new osg::ShapeDrawable(new osg::Cylinder(osg::Vec3(3.0f, 0.0f, 0.0f), radius, height));
     shape->setColor(osg::Vec4(1.0f, 0.3f, 0.3f, 1.0f));
     geode->addDrawable(shape.get());
 
@@ -154,40 +154,6 @@ class UpdateCameraAndTexGenCallback : public osg::NodeCallback
         CameraList                  _Cameras;
 };
 
-class TexMatCullCallback : public osg::NodeCallback
-{
-    public:
-
-        TexMatCullCallback(osg::TexMat* texmat):
-            _texmat(texmat)
-        {
-        }
-
-        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
-        {
-            // first update subgraph to make sure objects are all moved into position
-            traverse(node,nv);
-
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
-            if (cv)
-            {
-				osg::Quat q = osg::Matrix::inverse(*cv->getModelViewMatrix()).getRotate();
-
-
-				float yaw2 = asin(-2.0f*(q.x()*q.z() - q.w()*q.y()));
-				osg::Matrixd mxY;
-				mxY.makeRotate(yaw2,osg::Vec3(0,0,1));
-
-				osg::Matrixd mx = mxY;
-                _texmat->setMatrix(mx);
-            }
-        }
-
-    protected:
-
-        osg::ref_ptr<TexMat>    _texmat;
-};
-
 class UpdateCameraPosUniformCallback : public osg::Uniform::Callback
 {
 public:
@@ -209,18 +175,36 @@ protected:
 	osg::Camera* mCamera;
 };
 
+osg::TextureCubeMap* createRenderTexture(int tex_width, int tex_height) {
+    // create simple 2D texture
+    osg::TextureCubeMap* texture2D = new osg::TextureCubeMap;
+    texture2D->setTextureSize(tex_width, tex_height);
+    texture2D->setFilter(osg::TextureCubeMap::MIN_FILTER,osg::TextureCubeMap::LINEAR);
+    texture2D->setFilter(osg::TextureCubeMap::MAG_FILTER,osg::TextureCubeMap::LINEAR);
+    texture2D->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+    texture2D->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+    texture2D->setWrap(osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE);
+
+    texture2D->setInternalFormat(GL_DEPTH_COMPONENT32F);
+    texture2D->setSourceFormat(GL_DEPTH_COMPONENT);
+    texture2D->setSourceType(GL_FLOAT);
+
+    return texture2D;
+}
+
 osg::Group* createShadowedScene(osg::Node* reflectedSubgraph, osg::NodePath reflectorNodePath, unsigned int unit, const osg::Vec4& clearColor, unsigned tex_width, unsigned tex_height, osg::Camera::RenderTargetImplementation renderImplementation, osg::Camera* camera = 0) {
     osg::Group* group = new osg::Group;
 
-    osg::TextureCubeMap* texture = new osg::TextureCubeMap;
-    texture->setTextureSize(tex_width, tex_height);
+    // normal texture
+    // texture->setInternalFormat( GL_R32F );
+    // texture->setSourceFormat( GL_RED );
+    // texture->setSourceType( GL_FLOAT );
+    // texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+    // texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+    // texture->setFilter( osg::TextureCubeMap::MIN_FILTER, osg::TextureCubeMap::NEAREST );
+    // texture->setFilter( osg::TextureCubeMap::MAG_FILTER, osg::TextureCubeMap::NEAREST);
 
-    texture->setInternalFormat(GL_RGB);
-    texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-    texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
-    texture->setWrap(osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE);
-    texture->setFilter(osg::TextureCubeMap::MIN_FILTER,osg::TextureCubeMap::LINEAR);
-    texture->setFilter(osg::TextureCubeMap::MAG_FILTER,osg::TextureCubeMap::LINEAR);
+    osg::TextureCubeMap* texture = createRenderTexture(tex_width, tex_height);
 
     // set up the render to texture cameras.
     UpdateCameraAndTexGenCallback::CameraList Cameras;
@@ -232,16 +216,19 @@ osg::Group* createShadowedScene(osg::Node* reflectedSubgraph, osg::NodePath refl
         camera->setClearColor(clearColor);
 
         // set viewport
-        camera->setViewport(0,0,tex_width,tex_height);
+        camera->setViewport(0, 0, tex_width,tex_height);
 
         // set the camera to render before the main camera.
         camera->setRenderOrder(osg::Camera::PRE_RENDER);
+
+        camera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 
         // tell the camera to use OpenGL frame buffer object where supported.
         camera->setRenderTargetImplementation(renderImplementation);
 
         // attach the texture and use it as the color buffer.
-        camera->attach(osg::Camera::COLOR_BUFFER, texture, 0, i);
+        camera->attach(osg::Camera::DEPTH_BUFFER, texture, 0, i);
+        // camera->attach(osg::Camera::COLOR_BUFFER1, texture, 0, i);
 
         // add subgraph to render
         camera->addChild(reflectedSubgraph);
@@ -259,22 +246,8 @@ osg::Group* createShadowedScene(osg::Node* reflectedSubgraph, osg::NodePath refl
 
     // set the reflected subgraph so that it uses the texture and tex gen settings.
 	osg::Node* reflectorNode = reflectorNodePath.front();
-    {
 
-        group->addChild(reflectorNode);
-
-        osg::StateSet* stateset = reflectorNode->getOrCreateStateSet();
-		stateset->setTextureAttributeAndModes(unit,texture,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
-        stateset->setTextureMode(unit,GL_TEXTURE_GEN_S,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
-        stateset->setTextureMode(unit,GL_TEXTURE_GEN_T,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
-        stateset->setTextureMode(unit,GL_TEXTURE_GEN_R,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
-        stateset->setTextureMode(unit,GL_TEXTURE_GEN_Q,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
-
-        osg::TexMat* texmat = new osg::TexMat;
-        stateset->setTextureAttributeAndModes(unit,texmat,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
-
-        reflectorNode->setCullCallback(new TexMatCullCallback(texmat));
-    }
+    group->addChild(reflectorNode);
 
 	osg::StateSet* ss = reflectorNode->getOrCreateStateSet();
 	ss->setTextureAttributeAndModes(unit,texture,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
@@ -336,7 +309,7 @@ BOOST_AUTO_TEST_CASE(dynamicCubeMap2Demo_testCase) {
     // std::cout << "center : " << center.x() << "," << center.y() << "," << center.z() << std::endl;
     // std::cout << "up     : " << up.x() << "," << up.y() << "," << up.z() << std::endl;
 
-    // set view direction
+    // // set view direction
     // osg::Vec3d eye(0, -18.0198, 1.25);
     // osg::Vec3d center(0, -17.0198, 1.25);
     // osg::Vec3d up(0, 0, 1);
@@ -344,7 +317,7 @@ BOOST_AUTO_TEST_CASE(dynamicCubeMap2Demo_testCase) {
     // float maxRange = 25.0f;
     // float fovX = M_PI / 3;  // 60 degrees
     // float fovY = M_PI / 3;  // 60 degrees
-
+    //
     // // results
     // cv::Mat cvShader = computeNormalDepthMap(scene.get(), maxRange, fovX, fovY, 0, eye, center, up, 500);
     // cv::Mat cvDepth = setChannelValue(cvShader, 0, 0);
