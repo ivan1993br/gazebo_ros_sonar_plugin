@@ -10,9 +10,8 @@ uniform bool drawDepth;
 uniform sampler2D normalTexture;
 uniform float reflectance;
 uniform float attenuationCoeff;
-uniform samplerCube cubeMap;
 
-// out vec4 out_data;
+out vec4 out_data;
 
 void main() {
     vec3 nNormalEyeSpace;
@@ -22,7 +21,8 @@ void main() {
         vec3 normalRGB = texture2D(normalTexture, gl_TexCoord[0].xy).rgb;
         vec3 normalMap = (normalRGB * 2.0 - 1.0) * TBN;
         nNormalEyeSpace = normalize(normalMap);
-    } else {
+    }
+    else {
         nNormalEyeSpace = normalize(normalEyeSpace);
     }
 
@@ -30,9 +30,6 @@ void main() {
     if (reflectance > 0) {
         nNormalEyeSpace = min(nNormalEyeSpace * reflectance, 1.0);
     }
-
-    // Dynamic cube mapping
-    vec3 cubeColor = textureCube(cubeMap, gl_TexCoord[1].xyz).rgb;
 
     vec3 nPositionEyeSpace = normalize(-positionEyeSpace);
 
@@ -45,17 +42,12 @@ void main() {
 
     linearDepth = linearDepth / farPlane;
 
-    // out_data = vec4(0, 0, 0, 0);
-    // if (!(linearDepth > 1)) {
-    //     if (drawNormal){
-    //         float value = dot(nPositionEyeSpace, nNormalEyeSpace);
-    //         out_data.zw = vec2( abs(value), 1.0);
-    //     }
-    //     if (drawDepth) {
-    //         out_data.yw = vec2(linearDepth, 1.0);
-    //     }
-    // }
+    // output the normal and depth data as matrix
+    out_data = vec4(0, 0, 0, 1);
+    if (linearDepth <= 1) {
+        if (drawNormal) out_data.z = abs(dot(nPositionEyeSpace, nNormalEyeSpace));
+        if (drawDepth)  out_data.y = linearDepth;
+    }
 
-    // gl_FragDepth = linearDepth;
-    gl_FragColor = vec4(cubeColor, 1.0);
+    gl_FragDepth = linearDepth;
 }

@@ -29,8 +29,4 @@ void main() {
 
     // Texture for normal mapping (irregularities surfaces)
     gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
-
-    // Texture for dynamic cube mapping (indirect reflection)
-    gl_TexCoord[1].xyz = reflect(   normalize(directionEyeSpace),
-                                    normalize(normalWorldSpace));
 }
