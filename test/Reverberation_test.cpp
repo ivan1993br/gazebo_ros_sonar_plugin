@@ -5,15 +5,28 @@
 #include <normal_depth_map/Tools.hpp>
 #include "TestHelper.hpp"
 
-#define BOOST_TEST_MODULE "Attenuation_test"
+#define BOOST_TEST_MODULE "Reflection_test"
 #include <boost/test/unit_test.hpp>
 
 using namespace normal_depth_map;
 using namespace test_helper;
 
-BOOST_AUTO_TEST_SUITE(RayTracing)
+BOOST_AUTO_TEST_SUITE(Reverberation)
 
-BOOST_AUTO_TEST_CASE(attenuationDemo_testCase) {
+cv::Mat setChannelValue(cv::Mat img, int channel, uchar value) {
+    if (channel < 0 || channel > 2)
+        std::runtime_error("Channel number must be between 1 and 3");
+
+    std::vector<cv::Mat> channels;
+    cv::split(img, channels);
+    channels[channel].setTo(value);
+    cv::Mat out;
+    cv::merge(channels, out);
+
+   return out;
+}
+
+BOOST_AUTO_TEST_CASE(reverberation_testCase) {
     // sonar parameters
     float maxRange = 50;            // 50 meters
     float fovX = M_PI / 6;    // 30 degrees

@@ -18,8 +18,11 @@
 
 namespace normal_depth_map {
 
-#define SHADER_PATH_FRAG "normal_depth_map/shaders/normalDepthMap.frag"
-#define SHADER_PATH_VERT "normal_depth_map/shaders/normalDepthMap.vert"
+// #define SHADER_PATH_FRAG "normal_depth_map/shaders/normalDepthMap.frag"
+// #define SHADER_PATH_VERT "normal_depth_map/shaders/normalDepthMap.vert"
+
+#define SHADER_PATH_FRAG "normal_depth_map/shaders/temp/reverberation.frag"
+#define SHADER_PATH_VERT "normal_depth_map/shaders/temp/reverberation.vert"
 
 NormalDepthMap::NormalDepthMap(float maxRange, float maxHorizontalAngle, float maxVerticalAngle) {
     _normalDepthMapNode = createTheNormalDepthMapShaderNode(maxRange, maxHorizontalAngle, maxVerticalAngle);

@@ -28,7 +28,7 @@ rock_testsuite(DynamicCubeMap_core DynamicCubeMap_test.cpp TestHelper.cpp
     LIBS ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
     DEPS_PKGCONFIG openscenegraph opencv)
 
-rock_testsuite(Raytracing_core Raytracing_test.cpp TestHelper.cpp
+rock_testsuite(Reverberation_core Reverberation_test.cpp TestHelper.cpp
     DEPS normal_depth_map
     LIBS ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
     DEPS_PKGCONFIG openscenegraph opencv)
