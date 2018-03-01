@@ -36,12 +36,12 @@ public:
      *  BLUE CHANNEL, presents the normal values from the objects to the center camera, where:
      *      1 is the max value, and represents the normal vector of the object surface and the normal vector of camera are in the same directions, || ;
      *      0 is the minimum value, the normal vector of the object surface and the normal vector of camera are in the perpendicular directions, |_ ;
-     *  GREEN CHANNEL presents the depth values relative from camera center, where:
+     *  GREEN CHANNEL presents the depth values relative from camera center in 8 bits resolution , where:
      *      0 is the minimum value, and represents the object is near from the camera;
      *      1 is the max value, and represents the object is far from the camera, and it is limited by max range;
-     *  RED CHANNEL presents the horizontal angles values relative from camera center, where:
-     *      0 is the minimum value, and represents the object is the object is directly in front of the camera;
-     *      1 is the max value, and represents the object is not on front of the camera, and it is limited by max range;
+     *  DEPTH BUFFER presents the depth values relative from camera center in 32 bits resolution, where:
+     *      0 is the minimum value, and represents the object is near from the camera;
+     *      1 is the max value, and represents the object is far from the camera, and it is limited by max range;
      *
      *  @param maxRange: It is a float value which limits the depth calculation process. Default maxRange = 50.0
      */
