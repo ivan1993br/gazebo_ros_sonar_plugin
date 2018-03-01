@@ -52,6 +52,10 @@ float NormalDepthMap::getMaxRange() {
     return maxRange;
 }
 
+void NormalDepthMap::setAttenuationCoefficient(float coefficient) {
+    _normalDepthMapNode->getOrCreateStateSet()->getUniform("attenuationCoeff")->set(coefficient);
+}
+
 float NormalDepthMap::getAttenuationCoefficient() {
     float coefficient = 0;
     _normalDepthMapNode->getOrCreateStateSet()
