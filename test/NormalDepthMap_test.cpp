@@ -195,7 +195,7 @@ BOOST_AUTO_TEST_CASE(depthValueRadialVariation_testCase) {
         scene->addDrawable(new osg::ShapeDrawable(box));
     }
 
-    NormalDepthMap normalDepthMap(maxRange, M_PI / 6, M_PI / 6);
+    NormalDepthMap normalDepthMap(maxRange);
     normalDepthMap.setDrawNormal(false);
     normalDepthMap.addNodeChild(scene);
 

@@ -50,7 +50,7 @@ cv::Mat test_helper::computeNormalDepthMap(  osg::ref_ptr<osg::Group> root,
                                         uint height
                                     ) {
     // normal depth map
-    NormalDepthMap normalDepthMap(maxRange, fovX * 0.5, fovY * 0.5, attenuationCoeff);
+    NormalDepthMap normalDepthMap(maxRange, attenuationCoeff);
     ImageViewerCaptureTool capture(fovY, fovX, height);
     capture.setBackgroundColor(osg::Vec4d(0, 0, 0, 0));
     capture.setCameraPosition(eye, center, up);
