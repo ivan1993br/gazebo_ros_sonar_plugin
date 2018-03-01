@@ -44,12 +44,10 @@ public:
      *      1 is the max value, and represents the object is not on front of the camera, and it is limited by max range;
      *
      *  @param maxRange: It is a float value which limits the depth calculation process. Default maxRange = 50.0
-     *  @param maxHorizontalAngle: It is a float value which limits the angle calculation in horizontal direction process. Default maxHorizontalAngle = PI/4.
-     *  @param maxVerticalAngle: It is a float value which limits the angle calculation in vertical direction process. Default maxHorizontalAngle = PI/4.
      */
     NormalDepthMap();
-    NormalDepthMap(float maxRange, float maxHorizontalAngle, float maxVerticalAngle);
-    NormalDepthMap(float maxRange, float maxHorizontalAngle, float maxVerticalAngle, float attenuationCoeff);
+    NormalDepthMap(float maxRange);
+    NormalDepthMap(float maxRange, float attenuationCoeff);
 
     /**
      * @brief Add the models in the normal depth map node
@@ -63,17 +61,10 @@ public:
      */
     const osg::ref_ptr<osg::Group> getNormalDepthMapNode() const {
         return _normalDepthMapNode;
-    }
-
+    };
 
     void setMaxRange(float maxRange);
     float getMaxRange();
-
-    void setMaxHorizontalAngle(float maxHorizontalAngle);
-    float getMaxHorizontalAngle();
-
-    void setMaxVerticalAngle(float maxVerticalAngle);
-    float getMaxVerticalAngle();
 
     void setAttenuationCoefficient(float coefficient);
     float getAttenuationCoefficient();
@@ -84,16 +75,17 @@ public:
     void setDrawDepth(bool drawDepth);
     bool isDrawDepth();
 
+
 private:
+    osg::ref_ptr<osg::Group> _normalDepthMapNode; //main shader node
 
     osg::ref_ptr<osg::Group> createTheNormalDepthMapShaderNode(
                               float maxRange = 50.0,
-                              float maxHorizontalAngle = M_PI * 1.0 / 6.0,
-                              float maxVerticalAngle = M_PI * 1.0 / 6.0,
                               float attenuationCoefficient = 0,
                               bool drawDepth = true,
                               bool drawNormal = true);
-    osg::ref_ptr<osg::Group> _normalDepthMapNode; //main shader node
+
+    void convertVecticesToTexture(osg::ref_ptr<osg::Node> node);
 };
 }
 
