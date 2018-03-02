@@ -1,5 +1,5 @@
 /*
- * NormalDepthMap.h
+ * NormalDepthMap.hpp
  *
  *  Created on: Mar 27, 2015
  *      Author: tiagotrocoli
@@ -10,9 +10,54 @@
 
 #include <osg/Node>
 #include <osg/Group>
+#include <osg/Geode>
 #include <osg/ref_ptr>
 
 namespace normal_depth_map {
+
+struct TriangleStructs {
+
+    osg::ref_ptr< osg::Vec3Array > centroids;
+    osg::ref_ptr< osg::Vec3Array > normals;
+    osg::Matrix local_2_world;
+
+    TriangleStructs() {
+        centroids = new osg::Vec3Array();
+        normals = new osg::Vec3Array();
+    }
+
+    inline void operator () (const osg::Vec3& v1,
+                             const osg::Vec3& v2,
+                             const osg::Vec3& v3,
+                             bool treatVertexDataAsTemporary) {
+
+        // transform vertice coordinates to world coordinates
+        osg::Vec3 v1_w = v1 * local_2_world;
+        osg::Vec3 v2_w = v2 * local_2_world;
+        osg::Vec3 v3_w = v3 * local_2_world;
+
+        // compute triangle centroid
+        osg::Vec3 centroid = (v1_w + v2_w + v3_w) / 3;
+        centroids->push_back(centroid);
+
+        // compute triangle face normal, and normalize
+        osg::Vec3 v1_v2 = v2_w - v1_w;
+        osg::Vec3 v1_v3 = v3_w - v1_w;
+        osg::Vec3 normal = v1_v2.operator ^(v1_v3);
+        normal.normalize();
+        normals->push_back(normal);
+
+    }
+};
+
+class TrianglesVisitor : public osg::NodeVisitor {
+public:
+    TrianglesVisitor() {
+        setTraversalMode( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN );
+    }
+    void apply( osg::Geode& geode );
+};
+
 
 /**
  * @brief Gets the informations of normal and depth from a osg scene, between the objects and the camera.

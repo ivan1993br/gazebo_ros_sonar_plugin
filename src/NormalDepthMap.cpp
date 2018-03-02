@@ -7,14 +7,16 @@
 
 #include "NormalDepthMap.hpp"
 
-#include <osg/Node>
 #include <osg/Program>
 #include <osg/ref_ptr>
-#include <osg/Group>
 #include <osg/Shader>
 #include <osg/StateSet>
 #include <osg/Uniform>
 #include <osgDB/FileUtils>
+#include <osg/ShapeDrawable>
+#include <osg/TriangleFunctor>
+#include <iostream>
+
 
 namespace normal_depth_map {
 
@@ -23,6 +25,23 @@ namespace normal_depth_map {
 
 #define SHADER_PATH_FRAG "normal_depth_map/shaders/temp/reverberation.frag"
 #define SHADER_PATH_VERT "normal_depth_map/shaders/temp/reverberation.vert"
+
+void TrianglesVisitor::apply( osg::Geode& geode ) {
+    for ( unsigned int i = 0; i<geode.getNumDrawables(); ++i ) {
+
+        osg::TriangleFunctor<TriangleStructs> triangle_data;
+        triangle_data.local_2_world = osg::computeLocalToWorld(getNodePath());
+        geode.getDrawable(i)->accept(triangle_data);
+
+        // std::cout << "Node: " << (i + 1) <<" | "
+        //           << "Triangles:centroid " << triangle_data.centroids->size()
+        //           << " | "
+        //           << "Triangles:normal " << triangle_data.normals->size()
+        //           << std::endl;
+    }
+}
+
+
 
 NormalDepthMap::NormalDepthMap(float maxRange ) {
     _normalDepthMapNode = createTheNormalDepthMapShaderNode(maxRange);
@@ -96,6 +115,8 @@ bool NormalDepthMap::isDrawDepth() {
 
 void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     _normalDepthMapNode->addChild(node);
+    TrianglesVisitor visitor;
+    _normalDepthMapNode->accept(visitor);
 }
 
 osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
