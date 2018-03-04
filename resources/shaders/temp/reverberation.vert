@@ -11,10 +11,6 @@ struct Ray {
     vec3 direction;
 };
 
-vec3 RayAt (Ray ray, float t) {
-	return ray.origin + t * ray.direction;
-}
-
 void main() {
     gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
 

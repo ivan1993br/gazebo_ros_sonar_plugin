@@ -7,6 +7,8 @@ uniform float farPlane;
 uniform bool drawNormal;
 uniform bool drawDepth;
 
+uniform sampler2D vertexMap;
+
 out vec4 out_data;
 
 void main() {
