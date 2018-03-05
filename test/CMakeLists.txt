@@ -32,3 +32,8 @@ rock_testsuite(Reverberation_core Reverberation_test.cpp TestHelper.cpp
     DEPS normal_depth_map
     LIBS ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
     DEPS_PKGCONFIG openscenegraph opencv)
+
+rock_testsuite(OpenCV_KDtree OpenCV_KDtree.cpp
+    DEPS normal_depth_map
+    LIBS ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
+    DEPS_PKGCONFIG opencv)
