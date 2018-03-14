@@ -13,7 +13,7 @@
 #include <normal_depth_map/Tools.hpp>
 #include "TestHelper.hpp"
 
-#define BOOST_TEST_MODULE "Reflection_test"
+#define BOOST_TEST_MODULE "Reverberation_test"
 #include <boost/test/unit_test.hpp>
 
 using namespace normal_depth_map;
@@ -62,7 +62,6 @@ class CollectTrianglesVisitor : public osg::NodeVisitor {
                 osg::TriangleFunctor<CollectTriangles> triangleCollector;
                 geode.getDrawable(i)->accept(triangleCollector);
                 vertices->insert(vertices->end(), triangleCollector.verts->begin(), triangleCollector.verts->end());
-                // std::cout << "Node: " << i << " / Vertices: " << triangleCollector.verts->size() << std::endl;
             }
         }
         osg::ref_ptr< osg::Vec3Array > vertices;
@@ -83,30 +82,7 @@ BOOST_AUTO_TEST_CASE(reverberation_testCase) {
 
     // until OpenGL 4.3, arrays in GLSL must be fixed, compile-time size.
     // In this case, the triangles' vertices are stored as texture and passed to shader.
-    osg::ref_ptr<osg::Image> image = new osg::Image;
-    image->setImage(visitor.vertices->size(), 1, 1, GL_RGBA8, GL_RGBA, GL_FLOAT, (unsigned char*) &visitor.vertices[0], osg::Image::NO_DELETE);
-    osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
-    texture->setImage(image);
-
-    // Pass the texture to GLSL as uniform
-    osg::StateSet* ss = scene->getOrCreateStateSet();
-    ss->addUniform( new osg::Uniform("vertexMap", texture) );
-
-    // sonar parameters
-    float maxRange = 50;      // 50 meters
-    float fovX = M_PI / 6;    // 30 degrees
-    float fovY = M_PI / 6;    // 30 degrees
-
-    // display the same scene with and without underwater acoustic attenuation
-    for (uint i = 0; i < eyes.size(); ++i) {
-        cv::Mat rawShader = computeNormalDepthMap(scene, maxRange, fovX, fovY, 0, eyes[i], centers[i], ups[i]);
-        cv::Mat rawSonar  = drawSonarImage(rawShader, maxRange, fovX * 0.5);
-
-        // output
-        cv::imshow("raw shader", rawShader);
-        cv::imshow("raw sonar ", rawSonar);
-        cv::waitKey();
-    }
+    osg::ref_ptr<osg::Image> image = new osg::Image();
 }
 
 BOOST_AUTO_TEST_SUITE_END();

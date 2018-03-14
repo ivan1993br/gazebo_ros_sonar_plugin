@@ -1,15 +1,11 @@
 #version 130
 
 uniform mat4 osg_ViewMatrixInverse;
+uniform vec4 osg_MultiTexCoord0;
 
 out vec3 positionEyeSpace;
 out vec3 normalEyeSpace;
-
-// ray definition, with an origin point and a direction vector
-struct Ray {
-    vec3 origin;
-    vec3 direction;
-};
+// out vec2 texCoord;
 
 void main() {
     gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
@@ -27,4 +23,13 @@ void main() {
     vec3 I = normalize(positionWorldSpace);
     vec3 N = normalize(normalWorldSpace);
     vec3 reflectedDirection = normalize(reflect(I, N));
+
+    // texCoord = gl_MultiTexCoord0.st;
+    // texCoord = osg_MultiTexCoord0.st;
+
+
+    // tc = vec2( (gl_VertexID & 2) >> 1, 1 - (gl_VertexID & 1) );
+
+    // gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
+    gl_TexCoord[0] = osg_MultiTexCoord0;
 }

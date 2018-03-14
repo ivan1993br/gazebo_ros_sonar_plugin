@@ -60,13 +60,13 @@ cv::Mat test_helper::computeNormalDepthMap(  osg::ref_ptr<osg::Group> root,
     osg::ref_ptr<osg::Image> osgImage = capture.grabImage(normalDepthMap.getNormalDepthMapNode());
     osg::ref_ptr<osg::Image> osgDepth = capture.getDepthBuffer();
     cv::Mat cvImage = cv::Mat(osgImage->t(), osgImage->s(), CV_32FC3, osgImage->data());
-    cv::Mat cvDepth = cv::Mat(osgDepth->t(), osgDepth->s(), CV_32FC1, osgDepth->data());
-    cvDepth = cvDepth.mul( cv::Mat1f(cvDepth < 1) / 255);
+    // cv::Mat cvDepth = cv::Mat(osgDepth->t(), osgDepth->s(), CV_32FC1, osgDepth->data());
+    // cvDepth = cvDepth.mul( cv::Mat1f(cvDepth < 1) / 255);
 
-    std::vector<cv::Mat> channels;
-    cv::split(cvImage, channels);
-    channels[1] = cvDepth;
-    cv::merge(channels, cvImage);
+    // std::vector<cv::Mat> channels;
+    // cv::split(cvImage, channels);
+    // channels[1] = cvDepth;
+    // cv::merge(channels, cvImage);
     cv::cvtColor(cvImage, cvImage, cv::COLOR_RGB2BGR);
     cv::flip(cvImage, cvImage, 0);
 
@@ -85,8 +85,10 @@ void test_helper::roundMat(cv::Mat& roi, int precision) {
 
 // check if two matrixes are equals
 bool test_helper::areEquals (const cv::Mat& image1, const cv::Mat& image2) {
-    cv::Mat diff = image1 != image2;
-    return (cv::countNonZero(diff) == 0);
+    if (image1.type() != image2.type()
+        || image1.size() != image2.size())
+        return false;
+    return !cv::norm(image1, image2, cv::NORM_L1);
 }
 
 // draw the scene with a small ball in the center with a big cube, cylinder and cone in back
