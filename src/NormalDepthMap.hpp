@@ -8,10 +8,12 @@
 #ifndef SIMULATION_NORMAL_DEPTH_MAP_SRC_NORMALDEPTHMAP_HPP_
 #define SIMULATION_NORMAL_DEPTH_MAP_SRC_NORMALDEPTHMAP_HPP_
 
+#include <vector>
 #include <osg/Node>
 #include <osg/Group>
 #include <osg/Geode>
 #include <osg/ref_ptr>
+#include <osg/TriangleFunctor>
 
 namespace normal_depth_map {
 
@@ -21,16 +23,53 @@ namespace normal_depth_map {
    *
    */
 
-struct TriangleStructs {
+struct TriangleStruct {
+    osg::Vec3 _v_1;
+    osg::Vec3 _v_2;
+    osg::Vec3 _v_3;
+    osg::Vec3 _normal;
+    osg::Vec3 _centroid;
 
-    osg::ref_ptr< osg::Vec3Array > centroids;
-    osg::ref_ptr< osg::Vec3Array > normals;
+    TriangleStruct() : _v_1( osg::Vec3(0,0,0) ), _v_2( osg::Vec3(0,0,0) ),
+                       _v_3( osg::Vec3(0,0,0) ), _normal( osg::Vec3(0,0,0) ),
+                       _centroid( osg::Vec3(0,0,0) ){};
+
+    TriangleStruct(osg::Vec3 v_1, osg::Vec3 v_2, osg::Vec3 v_3)
+      : _v_1(v_1), _v_2(v_2), _v_3(v_3), _normal( osg::Vec3(0,0,0) ),
+        _centroid( osg::Vec3(0,0,0) ){
+
+        setTriangle(v_1, v_2, v_3);
+    };
+
+    void setTriangle(osg::Vec3 v_1, osg::Vec3 v_2, osg::Vec3 v_3){
+
+      _v_1 = v_1;
+      _v_2 = v_2;
+      _v_3 = v_3;
+      _centroid = (_v_1 + _v_2 + _v_3) / 3;
+
+      osg::Vec3 v1_v2 = _v_2 - _v_1;
+      osg::Vec3 v1_v3 = _v_3 - _v_1;
+      _normal = v1_v2.operator ^(v1_v3);
+      _normal.normalize();
+    };
+
+};
+
+
+
+struct TrianglesCollection{
+
+    std::vector<TriangleStruct>* triangles;
     osg::Matrix local_2_world;
 
-    TriangleStructs() {
-        centroids = new osg::Vec3Array();
-        normals = new osg::Vec3Array();
-    }
+    TrianglesCollection() {
+        triangles = new std::vector<TriangleStruct>();
+    };
+
+    ~TrianglesCollection() {
+        delete triangles;
+    };
 
     inline void operator () (const osg::Vec3& v1,
                              const osg::Vec3& v2,
@@ -41,19 +80,8 @@ struct TriangleStructs {
         osg::Vec3 v1_w = v1 * local_2_world;
         osg::Vec3 v2_w = v2 * local_2_world;
         osg::Vec3 v3_w = v3 * local_2_world;
-
-        // compute triangle centroid
-        osg::Vec3 centroid = (v1_w + v2_w + v3_w) / 3;
-        centroids->push_back(centroid);
-
-        // compute triangle face normal, and normalize
-        osg::Vec3 v1_v2 = v2_w - v1_w;
-        osg::Vec3 v1_v3 = v3_w - v1_w;
-        osg::Vec3 normal = v1_v2.operator ^(v1_v3);
-        normal.normalize();
-        normals->push_back(normal);
-
-    }
+        triangles->push_back( TriangleStruct(v1_w, v2_w, v3_w) );
+    };
 };
 
 /**
@@ -62,9 +90,12 @@ struct TriangleStructs {
  */
 class TrianglesVisitor : public osg::NodeVisitor {
 public:
-    TrianglesVisitor() {
-        setTraversalMode( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN );
-    }
+
+    osg::TriangleFunctor<TrianglesCollection> triangles_data;
+    unsigned int meshs;
+
+    TrianglesVisitor();
+
     void apply( osg::Geode& geode );
 };
 
