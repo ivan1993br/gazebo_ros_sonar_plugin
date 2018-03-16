@@ -30,12 +30,15 @@ struct TriangleStruct {
     osg::Vec3 _normal;
     osg::Vec3 _centroid;
 
-    TriangleStruct() : _v_1( osg::Vec3(0,0,0) ), _v_2( osg::Vec3(0,0,0) ),
-                       _v_3( osg::Vec3(0,0,0) ), _normal( osg::Vec3(0,0,0) ),
+    TriangleStruct() : _v_1( osg::Vec3(0,0,0) ),
+                       _v_2( osg::Vec3(0,0,0) ),
+                       _v_3( osg::Vec3(0,0,0) ),
+                       _normal( osg::Vec3(0,0,0) ),
                        _centroid( osg::Vec3(0,0,0) ){};
 
     TriangleStruct(osg::Vec3 v_1, osg::Vec3 v_2, osg::Vec3 v_3)
-      : _v_1(v_1), _v_2(v_2), _v_3(v_3), _normal( osg::Vec3(0,0,0) ),
+      : _v_1(v_1), _v_2(v_2), _v_3(v_3),
+        _normal( osg::Vec3(0,0,0) ),
         _centroid( osg::Vec3(0,0,0) ){
 
         setTriangle(v_1, v_2, v_3);
@@ -43,19 +46,33 @@ struct TriangleStruct {
 
     void setTriangle(osg::Vec3 v_1, osg::Vec3 v_2, osg::Vec3 v_3){
 
-      _v_1 = v_1;
-      _v_2 = v_2;
-      _v_3 = v_3;
-      _centroid = (_v_1 + _v_2 + _v_3) / 3;
+        _v_1 = v_1;
+        _v_2 = v_2;
+        _v_3 = v_3;
+        _centroid = (_v_1 + _v_2 + _v_3) / 3;
 
-      osg::Vec3 v1_v2 = _v_2 - _v_1;
-      osg::Vec3 v1_v3 = _v_3 - _v_1;
-      _normal = v1_v2.operator ^(v1_v3);
-      _normal.normalize();
+        osg::Vec3 v1_v2 = _v_2 - _v_1;
+        osg::Vec3 v1_v3 = _v_3 - _v_1;
+        _normal = v1_v2.operator ^(v1_v3);
+        _normal.normalize();
     };
 
-};
+    bool operator < (const TriangleStruct& obj_1){
 
+        if ( _centroid.x() < obj_1._centroid.x() )
+            return true;
+        else if ( _centroid.x() > obj_1._centroid.x() )
+            return false;
+        else if ( _centroid.y() < obj_1._centroid.y() )
+            return true;
+        else if ( _centroid.y() > obj_1._centroid.y() )
+            return false;
+        else if ( _centroid.z() < obj_1._centroid.z() )
+            return true;
+
+        return false;
+    }
+};
 
 
 struct TrianglesCollection{
@@ -92,12 +109,11 @@ class TrianglesVisitor : public osg::NodeVisitor {
 public:
 
     osg::TriangleFunctor<TrianglesCollection> triangles_data;
-    unsigned int meshs;
 
     TrianglesVisitor();
-
     void apply( osg::Geode& geode );
 };
+
 
 
 /**
@@ -164,6 +180,7 @@ public:
 
 private:
     osg::ref_ptr<osg::Group> _normalDepthMapNode; //main shader node
+    TrianglesVisitor _visitor;
 
     osg::ref_ptr<osg::Group> createTheNormalDepthMapShaderNode(
                               float maxRange = 50.0,
