@@ -62,7 +62,7 @@ cv::Mat test_helper::computeNormalDepthMap(  osg::ref_ptr<osg::Group> root,
     cv::Mat cvImage = cv::Mat(osgImage->t(), osgImage->s(), CV_32FC3, osgImage->data());
     // cv::Mat cvDepth = cv::Mat(osgDepth->t(), osgDepth->s(), CV_32FC1, osgDepth->data());
     // cvDepth = cvDepth.mul( cv::Mat1f(cvDepth < 1) / 255);
-
+    //
     // std::vector<cv::Mat> channels;
     // cv::split(cvImage, channels);
     // channels[1] = cvDepth;
@@ -134,4 +134,22 @@ void test_helper::viewPointsFromDemoScene(std::vector<osg::Vec3d> *eyes,
     eyes->push_back(osg::Vec3d(0.0176255, -56.5841, -10.0666));
     centers->push_back(osg::Vec3d(0.0176255, -55.5841, -10.0666));
     ups->push_back(osg::Vec3d(0, 0, 1));
+}
+
+osg::ref_ptr<osg::Image> test_helper::convertCV2OSG(const cv::Mat& cv_image) {
+	cv::Mat rgb;
+	cv::cvtColor(cv_image, rgb, CV_BGR2RGB);
+	cv::flip(rgb, rgb, 0);
+
+	osg::ref_ptr<osg::Image> osg_image = new osg::Image;
+	uchar *data = new uchar[rgb.total() * rgb.elemSize()];
+	memcpy(data, rgb.data, rgb.total() * rgb.elemSize());
+	osg_image->setImage(cv_image.cols, cv_image.rows, 1, GL_RGBA32F_ARB, GL_RGB, GL_FLOAT, data, osg::Image::NO_DELETE);
+    return osg_image;
+}
+
+cv::Mat test_helper::convertOSG2CV(const osg::ref_ptr<osg::Image>& osg_image) {
+    cv::Mat cv_image = cv::Mat(osg_image->t(), osg_image->s(), CV_32FC3, osg_image->data());
+    cv::cvtColor(cv_image, cv_image, cv::COLOR_RGB2BGR);
+    return cv_image;
 }

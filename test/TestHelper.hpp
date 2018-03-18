@@ -4,7 +4,9 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+// OSG includes
 #include <osg/Group>
+#include <osg/Image>
 
 namespace test_helper {
     cv::Mat drawSonarImage(cv::Mat3f image, double maxRange, double maxAngleX);
@@ -28,4 +30,10 @@ namespace test_helper {
     void viewPointsFromDemoScene(std::vector<osg::Vec3d> *eyes,
                                  std::vector<osg::Vec3d> *centers,
                                  std::vector<osg::Vec3d> *ups);
+
+     // convert opencv to osg images
+     osg::ref_ptr<osg::Image> convertCV2OSG(const cv::Mat& cv_image);
+
+     // convert osg to opencv images
+     cv::Mat convertOSG2CV(const osg::ref_ptr<osg::Image>& osgImage);
 }

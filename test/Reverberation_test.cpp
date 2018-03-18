@@ -8,6 +8,7 @@
 
 // C++ includes
 #include <iostream>
+#include <vector>
 
 // Rock includes
 #include <normal_depth_map/Tools.hpp>
@@ -35,17 +36,15 @@ cv::Mat setChannelValue(cv::Mat img, int channel, uchar value) {
 }
 
 struct CollectTriangles {
-    CollectTriangles() {
-        verts = new osg::Vec3Array();
-    }
+    CollectTriangles() {}
 
     inline void operator () (const osg::Vec3& v1,const osg::Vec3& v2,const osg::Vec3& v3, bool treatVertexDataAsTemporary) {
-        verts->push_back(v1);
-        verts->push_back(v2);
-        verts->push_back(v3);
+        verts.push_back(v1);
+        verts.push_back(v2);
+        verts.push_back(v3);
     }
 
-    osg::ref_ptr< osg::Vec3Array > verts;
+    std::vector<osg::Vec3> verts;
 };
 
 
@@ -53,25 +52,46 @@ class CollectTrianglesVisitor : public osg::NodeVisitor {
 
     public:
         CollectTrianglesVisitor() {
-            vertices = new osg::Vec3Array();
             setTraversalMode( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN );
+            vertices.clear();
         }
 
         void apply( osg::Geode& geode ) {
             for ( unsigned int i = 0; i<geode.getNumDrawables(); ++i ) {
                 osg::TriangleFunctor<CollectTriangles> triangleCollector;
                 geode.getDrawable(i)->accept(triangleCollector);
-                vertices->insert(vertices->end(), triangleCollector.verts->begin(), triangleCollector.verts->end());
+                vertices.insert(vertices.end(), triangleCollector.verts.begin(), triangleCollector.verts.end());
             }
         }
-        osg::ref_ptr< osg::Vec3Array > vertices;
+        std::vector<osg::Vec3> vertices;
 };
 
-BOOST_AUTO_TEST_CASE(reverberation_testCase) {
-     // define the different camera point of views
-    std::vector<osg::Vec3d> eyes, centers, ups;
-    viewPointsFromDemoScene(&eyes, &centers, &ups);
+BOOST_AUTO_TEST_CASE(dataConversion_testCase) {
+    // original array
+    std::vector<osg::Vec3> myArray;
+    for (size_t i = 0; i < 256; i++) {
+        for (size_t j = 0; j < 256; j++) {
+            float value = (float) j / 256;
+            myArray.push_back(osg::Vec3(value, value, value));
+        }
+    }
 
+    // convert to image
+    cv::Mat cvImageIn(256, 256, CV_32FC3, (void*) myArray.data());
+    osg::ref_ptr<osg::Image> osgImage = convertCV2OSG(cvImageIn);
+
+    // convert back to array
+    cv::Mat cvImageOut = convertOSG2CV(osgImage);
+
+    // compare vectors
+    std::vector<float> dataIn, dataOut;
+    dataIn.assign((float*) cvImageIn.datastart, (float*) cvImageIn.dataend);
+    dataOut.assign((float*) cvImageOut.datastart, (float*) cvImageOut.dataend);
+
+    BOOST_CHECK_EQUAL_COLLECTIONS(dataIn.begin(), dataIn.end(), dataOut.begin(), dataOut.end());
+}
+
+BOOST_AUTO_TEST_CASE(reverberation_testCase) {
     // create a simple scene with multiple objects
     osg::ref_ptr<osg::Group> scene = new osg::Group();
     makeDemoScene(scene);
@@ -82,7 +102,36 @@ BOOST_AUTO_TEST_CASE(reverberation_testCase) {
 
     // until OpenGL 4.3, arrays in GLSL must be fixed, compile-time size.
     // In this case, the triangles' vertices are stored as texture and passed to shader.
-    osg::ref_ptr<osg::Image> image = new osg::Image();
+    cv::Mat cvImage(visitor.vertices.size(), 1, CV_32FC3, (void*) visitor.vertices.data());
+    osg::ref_ptr<osg::Image> osgImage = convertCV2OSG(cvImage);
+    osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
+    texture->setTextureSize(osgImage->s(), osgImage->t());
+    texture->setResizeNonPowerOfTwoHint(false);
+    texture->setImage(osgImage);
+
+    // pass the texture data to GLSL as uniform
+    osg::StateSet* ss = scene->getOrCreateStateSet();
+    osg::Uniform* vertexUniform = new osg::Uniform(osg::Uniform::SAMPLER_2D, "vertexMap");
+    vertexUniform->set(0);
+    ss->addUniform(vertexUniform);
+    ss->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
+    ss->addUniform(new osg::Uniform("vertexMapSize", (int) visitor.vertices.size()));
+
+    // sonar parameters
+    float maxRange = 50;      // 50 meters
+    float fovX = M_PI / 6;    // 30 degrees
+    float fovY = M_PI / 6;    // 30 degrees
+
+    // define the different camera point of views
+    std::vector<osg::Vec3d> eyes, centers, ups;
+    viewPointsFromDemoScene(&eyes, &centers, &ups);
+
+    // compute and display the final shader and sonar images
+    for (unsigned i = 0; i < eyes.size(); ++i) {
+        cv::Mat rawShader = computeNormalDepthMap(scene, maxRange, fovX, fovY, 0, eyes[i], centers[i], ups[i]);
+        cv::imshow("rawShader", rawShader);
+        cv::waitKey();
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END();
