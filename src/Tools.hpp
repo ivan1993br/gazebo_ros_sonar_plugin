@@ -141,14 +141,14 @@ void setOSGImagePixel(osg::ref_ptr<osg::Image>& image,
 							unsigned int channel,
 							T value ){
 
-    bool valid = ( x < image->s() )
-              && ( y < image->t() )
-              && ( channel < image->r() );
+    bool valid = ( x < (unsigned int) image->s() )
+              && ( y < (unsigned int) image->t() )
+              && ( channel < (unsigned int) image->r() );
 
     if( !valid )
       return;
 
-    uint step = (y*image->s() + x) * image->r() + channel;
+    uint step = (x*image->s() + y) * image->r() + channel;
 
     T* data = (T*) image->data();
     data = data + step;
