@@ -27,21 +27,6 @@ namespace normal_depth_map {
 // #define SHADER_PATH_FRAG "normal_depth_map/shaders/temp/reverberation.frag"
 // #define SHADER_PATH_VERT "normal_depth_map/shaders/temp/reverberation.vert"
 
-
-TrianglesVisitor::TrianglesVisitor() {
-    setTraversalMode( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN );
-};
-
-void TrianglesVisitor::apply( osg::Geode& geode ) {
-
-    for ( unsigned int i = 0; i< geode.getNumDrawables(); ++i ) {
-        triangles_data.local_2_world = osg::computeLocalToWorld(getNodePath());
-        geode.getDrawable(i)->accept(triangles_data);
-    }
-}
-
-
-
 NormalDepthMap::NormalDepthMap(float maxRange ) {
     _normalDepthMapNode = createTheNormalDepthMapShaderNode(maxRange);
 }
@@ -153,7 +138,11 @@ osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
     return localRoot;
 }
 
-void NormalDepthMap::convertVecticesToTexture(osg::ref_ptr<osg::Node> node){
+osg::ref_ptr<osg::Texture2D> NormalDepthMap::convertVecticesToTexture(
+                                        std::vector<TriangleStruct>* triangles){
+
+    osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
+    return texture;
 
 }
 

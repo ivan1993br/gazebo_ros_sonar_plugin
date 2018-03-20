@@ -39,4 +39,31 @@ double underwaterSignalAttenuation( const double frequency,
     return attenuation;
 }
 
+TrianglesVisitor::TrianglesVisitor() {
+    setTraversalMode( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN );
+};
+
+void TrianglesVisitor::apply( osg::Geode& geode ) {
+
+    for ( unsigned int i = 0; i< geode.getNumDrawables(); ++i ) {
+        triangles_data.local_2_world = osg::computeLocalToWorld(getNodePath());
+        geode.getDrawable(i)->accept(triangles_data);
+    }
+}
+
+template< typename T>
+void setOSGImagePixel(osg::ref_ptr<osg::Image>& image,
+	 					  unsigned int x,
+							unsigned int y,
+							unsigned int channel,
+							T value ){
+
+		uint step = (y*image->s() + x) * image->r() + channel;
+
+		T* data = (T*) image->data();
+		data = data + step;
+		*data = value;
+}
+
+
 }

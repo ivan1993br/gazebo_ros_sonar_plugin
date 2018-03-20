@@ -14,106 +14,11 @@
 #include <osg/Geode>
 #include <osg/ref_ptr>
 #include <osg/TriangleFunctor>
+#include <osg/Texture2D>
+
+#include "Tools.hpp"
 
 namespace normal_depth_map {
-
-
-  /**
-   * @brief
-   *
-   */
-
-struct TriangleStruct {
-    osg::Vec3 _v_1;
-    osg::Vec3 _v_2;
-    osg::Vec3 _v_3;
-    osg::Vec3 _normal;
-    osg::Vec3 _centroid;
-
-    TriangleStruct() : _v_1( osg::Vec3(0,0,0) ),
-                       _v_2( osg::Vec3(0,0,0) ),
-                       _v_3( osg::Vec3(0,0,0) ),
-                       _normal( osg::Vec3(0,0,0) ),
-                       _centroid( osg::Vec3(0,0,0) ){};
-
-    TriangleStruct(osg::Vec3 v_1, osg::Vec3 v_2, osg::Vec3 v_3)
-      : _v_1(v_1), _v_2(v_2), _v_3(v_3),
-        _normal( osg::Vec3(0,0,0) ),
-        _centroid( osg::Vec3(0,0,0) ){
-
-        setTriangle(v_1, v_2, v_3);
-    };
-
-    void setTriangle(osg::Vec3 v_1, osg::Vec3 v_2, osg::Vec3 v_3){
-
-        _v_1 = v_1;
-        _v_2 = v_2;
-        _v_3 = v_3;
-        _centroid = (_v_1 + _v_2 + _v_3) / 3;
-
-        osg::Vec3 v1_v2 = _v_2 - _v_1;
-        osg::Vec3 v1_v3 = _v_3 - _v_1;
-        _normal = v1_v2.operator ^(v1_v3);
-        _normal.normalize();
-    };
-
-    bool operator < (const TriangleStruct& obj_1){
-
-        if ( _centroid.x() < obj_1._centroid.x() )
-            return true;
-        else if ( _centroid.x() > obj_1._centroid.x() )
-            return false;
-        else if ( _centroid.y() < obj_1._centroid.y() )
-            return true;
-        else if ( _centroid.y() > obj_1._centroid.y() )
-            return false;
-        else if ( _centroid.z() < obj_1._centroid.z() )
-            return true;
-
-        return false;
-    }
-};
-
-
-struct TrianglesCollection{
-
-    std::vector<TriangleStruct>* triangles;
-    osg::Matrix local_2_world;
-
-    TrianglesCollection() {
-        triangles = new std::vector<TriangleStruct>();
-    };
-
-    ~TrianglesCollection() {
-        delete triangles;
-    };
-
-    inline void operator () (const osg::Vec3& v1,
-                             const osg::Vec3& v2,
-                             const osg::Vec3& v3,
-                             bool treatVertexDataAsTemporary) {
-
-        // transform vertice coordinates to world coordinates
-        osg::Vec3 v1_w = v1 * local_2_world;
-        osg::Vec3 v2_w = v2 * local_2_world;
-        osg::Vec3 v3_w = v3 * local_2_world;
-        triangles->push_back( TriangleStruct(v1_w, v2_w, v3_w) );
-    };
-};
-
-/**
- * @brief
- *
- */
-class TrianglesVisitor : public osg::NodeVisitor {
-public:
-
-    osg::TriangleFunctor<TrianglesCollection> triangles_data;
-
-    TrianglesVisitor();
-    void apply( osg::Geode& geode );
-};
-
 
 
 /**
@@ -188,7 +93,8 @@ private:
                               bool drawDepth = true,
                               bool drawNormal = true);
 
-    void convertVecticesToTexture(osg::ref_ptr<osg::Node> node);
+    osg::ref_ptr<osg::Texture2D> convertVecticesToTexture(
+                             std::vector<TriangleStruct>* triangles = NULL);
 };
 }
 
