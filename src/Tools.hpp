@@ -134,12 +134,26 @@ public:
     void apply( osg::Geode& geode );
 };
 
-template< typename T>
+template < typename T >
 void setOSGImagePixel(osg::ref_ptr<osg::Image>& image,
 	 					  unsigned int x,
 							unsigned int y,
 							unsigned int channel,
-							T value );
+							T value ){
+
+    bool valid = ( x < image->s() )
+              && ( y < image->t() )
+              && ( channel < image->r() );
+
+    if( !valid )
+      return;
+
+    uint step = (y*image->s() + x) * image->r() + channel;
+
+    T* data = (T*) image->data();
+    data = data + step;
+    *data = value;
+}
 
 }
 

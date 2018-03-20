@@ -51,19 +51,4 @@ void TrianglesVisitor::apply( osg::Geode& geode ) {
     }
 }
 
-template< typename T>
-void setOSGImagePixel(osg::ref_ptr<osg::Image>& image,
-	 					  unsigned int x,
-							unsigned int y,
-							unsigned int channel,
-							T value ){
-
-		uint step = (y*image->s() + x) * image->r() + channel;
-
-		T* data = (T*) image->data();
-		data = data + step;
-		*data = value;
-}
-
-
 }
