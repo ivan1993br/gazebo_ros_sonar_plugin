@@ -7,6 +7,7 @@
 #include <osg/Geode>
 #include <osg/ref_ptr>
 #include <osg/TriangleFunctor>
+#include <osg/Texture2D>
 #include <osg/Image>
 
 
@@ -35,58 +36,62 @@ namespace normal_depth_map {
                                       const double acidity);
 
 /**
+* @brief
+*
+*/
+template < typename T >
+void setOSGImagePixel(osg::ref_ptr<osg::Image>& image,
+  unsigned int x,
+  unsigned int y,
+  unsigned int channel,
+  T value ){
+
+    bool valid = ( x < (unsigned int) image->s() )
+    && ( y < (unsigned int) image->t() )
+    && ( channel < (unsigned int) image->r() );
+
+    if( !valid )
+    return;
+
+    uint step = (x*image->s() + y) * image->r() + channel;
+
+    T* data = (T*) image->data();
+    data = data + step;
+    *data = value;
+  }
+
+/**
  * @brief
  *
  */
-
 struct TriangleStruct {
-    osg::Vec3 _v_1;
-    osg::Vec3 _v_2;
-    osg::Vec3 _v_3;
-    osg::Vec3 _normal;
-    osg::Vec3 _centroid;
+    std::vector< osg::Vec3 > _data;
 
-    TriangleStruct() : _v_1( osg::Vec3(0,0,0) ),
-                       _v_2( osg::Vec3(0,0,0) ),
-                       _v_3( osg::Vec3(0,0,0) ),
-                       _normal( osg::Vec3(0,0,0) ),
-                       _centroid( osg::Vec3(0,0,0) ){};
+    TriangleStruct()
+      : _data(5, osg::Vec3(0,0,0)) {};
 
     TriangleStruct(osg::Vec3 v_1, osg::Vec3 v_2, osg::Vec3 v_3)
-      : _v_1(v_1), _v_2(v_2), _v_3(v_3),
-        _normal( osg::Vec3(0,0,0) ),
-        _centroid( osg::Vec3(0,0,0) ){
+      : _data(5, osg::Vec3(0,0,0)) {
 
         setTriangle(v_1, v_2, v_3);
     };
 
     void setTriangle(osg::Vec3 v_1, osg::Vec3 v_2, osg::Vec3 v_3){
 
-        _v_1 = v_1;
-        _v_2 = v_2;
-        _v_3 = v_3;
-        _centroid = (_v_1 + _v_2 + _v_3) / 3;
+        _data[0] = v_1;
+        _data[1] = v_2;
+        _data[2] = v_3;
+        _data[3] = (v_1 + v_2 + v_3) / 3; // centroid
 
-        osg::Vec3 v1_v2 = _v_2 - _v_1;
-        osg::Vec3 v1_v3 = _v_3 - _v_1;
-        _normal = v1_v2.operator ^(v1_v3);
-        _normal.normalize();
+        osg::Vec3 v1_v2 = v_2 - v_1;
+        osg::Vec3 v1_v3 = v_3 - v_1;
+        _data[4] = v1_v2.operator ^(v1_v3);
+        _data[4].normalize(); // normal
     };
 
     bool operator < (const TriangleStruct& obj_1){
 
-        if ( _centroid.x() < obj_1._centroid.x() )
-            return true;
-        else if ( _centroid.x() > obj_1._centroid.x() )
-            return false;
-        else if ( _centroid.y() < obj_1._centroid.y() )
-            return true;
-        else if ( _centroid.y() > obj_1._centroid.y() )
-            return false;
-        else if ( _centroid.z() < obj_1._centroid.z() )
-            return true;
-
-        return false;
+        return _data[3] < obj_1._data[3];
     }
 };
 
@@ -94,7 +99,6 @@ struct TriangleStruct {
  * @brief
  *
  */
-
 struct TrianglesCollection{
 
     std::vector<TriangleStruct>* triangles;
@@ -138,27 +142,9 @@ public:
  * @brief
  *
  */
-
-template < typename T >
-void setOSGImagePixel(osg::ref_ptr<osg::Image>& image,
-	 					  unsigned int x,
-							unsigned int y,
-							unsigned int channel,
-							T value ){
-
-    bool valid = ( x < (unsigned int) image->s() )
-              && ( y < (unsigned int) image->t() )
-              && ( channel < (unsigned int) image->r() );
-
-    if( !valid )
-      return;
-
-    uint step = (x*image->s() + y) * image->r() + channel;
-
-    T* data = (T*) image->data();
-    data = data + step;
-    *data = value;
-}
+void convertTrianglesToTextures(
+                  std::vector<TriangleStruct>* triangles,
+                  std::vector< osg::ref_ptr<osg::Texture2D> >& textures);
 
 }
 
