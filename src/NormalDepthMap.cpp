@@ -138,12 +138,4 @@ osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
     return localRoot;
 }
 
-osg::ref_ptr<osg::Texture2D> NormalDepthMap::convertVecticesToTexture(
-                                        std::vector<TriangleStruct>* triangles){
-
-    osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
-    return texture;
-
-}
-
-}
+} // namespace normal_depth_map

@@ -11,10 +11,7 @@
 #include <vector>
 #include <osg/Node>
 #include <osg/Group>
-#include <osg/Geode>
 #include <osg/ref_ptr>
-#include <osg/TriangleFunctor>
-#include <osg/Texture2D>
 
 #include "Tools.hpp"
 
@@ -92,9 +89,6 @@ private:
                               float attenuationCoefficient = 0,
                               bool drawDepth = true,
                               bool drawNormal = true);
-
-    osg::ref_ptr<osg::Texture2D> convertVecticesToTexture(
-                             std::vector<TriangleStruct>* triangles = NULL);
 };
 }
 
