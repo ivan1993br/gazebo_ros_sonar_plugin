@@ -134,6 +134,11 @@ public:
     void apply( osg::Geode& geode );
 };
 
+/**
+ * @brief
+ *
+ */
+
 template < typename T >
 void setOSGImagePixel(osg::ref_ptr<osg::Image>& image,
 	 					  unsigned int x,

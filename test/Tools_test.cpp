@@ -89,15 +89,16 @@ BOOST_AUTO_TEST_CASE(setOSGImagePixel_TestCase) {
         cv::Point3f value( cv_image.at<cv::Vec3f>(point.x,point.y)[0],
                            cv_image.at<cv::Vec3f>(point.x,point.y)[1],
                            cv_image.at<cv::Vec3f>(point.x,point.y)[2]);
+        BOOST_CHECK_EQUAL(value, ground_truth_value[i]);
+
+        //debug
         // std::cout << "cv::Point3f("
         //           << value.x <<", "
         //           << value.y <<", "
         //           << value.z
         //           << ")," << std::endl;
-        BOOST_CHECK_EQUAL(value, ground_truth_value[i]);
     }
-
-
+    //debug
   	// cv::imshow("test", cv_image);
   	// cv::waitKey();
 }
