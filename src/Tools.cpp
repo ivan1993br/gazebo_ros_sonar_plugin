@@ -2,6 +2,8 @@
 #include "Tools.hpp"
 #include <cmath>
 
+#include <iostream>
+
 namespace normal_depth_map {
 
 double underwaterSignalAttenuation( const double frequency,
@@ -56,27 +58,24 @@ void convertTrianglesToTextures(
                       std::vector<TriangleStruct>* triangles,
                       std::vector< osg::ref_ptr<osg::Texture2D> >& textures){
 
-    std::vector< osg::ref_ptr<osg::Image> > images(
-                                              (*triangles)[0]._data.size(),
-                                              new osg::Image);
-
-    for (unsigned int i = 0; i < images.size(); i++){
-        images[i]->allocateImage(triangles->size(), 1, 3, GL_RGB, GL_FLOAT);
+    for (unsigned int i = 0; i < (*triangles)[0]._data.size(); i++){
+        osg::ref_ptr<osg::Image> image = new osg::Image();
+        image->allocateImage(1, triangles->size(), 3, GL_RGB, GL_FLOAT);
 
         for (unsigned int j = 0; j < triangles->size(); j++) {
-            setOSGImagePixel(images[i], 0, i, 0, (*triangles)[j]._data[i].x());
-            setOSGImagePixel(images[i], 0, i, 1, (*triangles)[j]._data[i].y());
-            setOSGImagePixel(images[i], 0, i, 2, (*triangles)[j]._data[i].z());
+            setOSGImagePixel(image, 0, j, 0, (*triangles)[j]._data[i].z());
+            setOSGImagePixel(image, 0, j, 1, (*triangles)[j]._data[i].y());
+            setOSGImagePixel(image, 0, j, 2, (*triangles)[j]._data[i].x());
         }
 
         osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
-        texture->setTextureSize(images[i]->s(), images[i]->t());
+        texture->setTextureSize(image->s(), image->t());
         texture->setResizeNonPowerOfTwoHint(false);
         texture->setUnRefImageDataAfterApply(true);
-        texture->setImage(images[i]);
+        texture->setImage(image);
+
         textures.push_back(texture);
     }
-
 }
 
 

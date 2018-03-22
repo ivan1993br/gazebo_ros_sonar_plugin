@@ -90,7 +90,6 @@ struct TriangleStruct {
     };
 
     bool operator < (const TriangleStruct& obj_1){
-
         return _data[3] < obj_1._data[3];
     }
 };
