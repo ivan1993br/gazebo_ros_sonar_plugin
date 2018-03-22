@@ -2,8 +2,6 @@
 #include "Tools.hpp"
 #include <cmath>
 
-#include <iostream>
-
 namespace normal_depth_map {
 
 double underwaterSignalAttenuation( const double frequency,
