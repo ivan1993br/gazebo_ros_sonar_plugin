@@ -26,12 +26,12 @@ std::vector<TriangleStruct> input_triangles;
 void triangleStructureDataSet(std::vector<TriangleStruct>& input){
 
     if(input.size() != 0)
-      return
+      return;
 
     input.push_back(TriangleStruct(
-      osg::Vec3(0, 5, 0),
-      osg::Vec3(-5, -5, 0),
-      osg::Vec3(5, -5, 0)));
+      osg::Vec3(0.0, 5.0, 0.0),
+      osg::Vec3(-5.0, -5.0, 0.0),
+      osg::Vec3(5.0, -5.0, 0.0)));
     input.push_back(TriangleStruct(
       osg::Vec3(-9.87688, 31.5643, -2.5),
       osg::Vec3(-10, 30, -2.5),
@@ -48,6 +48,7 @@ void triangleStructureDataSet(std::vector<TriangleStruct>& input){
       osg::Vec3(-0.110616, -0.110616, -0.987688),
       osg::Vec3(0, 0, -1),
       osg::Vec3(-0.0919497, -0.126558, -0.987688)));
+
     input.push_back(TriangleStruct(
       osg::Vec3(0.15451, -0.975528, 0.156435),
       osg::Vec3(0.305214, -0.939347, 0.156435),
@@ -68,6 +69,7 @@ void triangleStructureDataSet(std::vector<TriangleStruct>& input){
       osg::Vec3(-118.5, -2.5, -97.5),
       osg::Vec3(-113.5, -2.5, -102.5),
       osg::Vec3(-113.5, -2.5, -97.5)));
+
     input.push_back(TriangleStruct(
       osg::Vec3(-32.5, 2.5, -97.5),
       osg::Vec3(-32.5, -2.5, -102.5),
@@ -88,6 +90,7 @@ void triangleStructureDataSet(std::vector<TriangleStruct>& input){
       osg::Vec3(-2.5, 96.5, -102.5),
       osg::Vec3(2.5, 96.5, -102.5),
       osg::Vec3(2.5, 91.5, -102.5)));
+
     input.push_back(TriangleStruct(
       osg::Vec3(2.5, 77.5, -97.5),
       osg::Vec3(2.5, 77.5, -102.5),
@@ -195,6 +198,7 @@ BOOST_AUTO_TEST_CASE(sortBasedOnCentroid_TestCase) {
     ground_truth.push_back(osg::Vec3(-0.833333, 1.16667, -97.5));
     ground_truth.push_back(osg::Vec3(-0.495749, 0.218197, -0.836347));
     ground_truth.push_back(osg::Vec3(-0.0675219, -0.079058, -0.991792));
+    ground_truth.push_back(osg::Vec3(0, -1.66667, 0));
     ground_truth.push_back(osg::Vec3(0.251206, -0.939794, 0.207296));
     ground_truth.push_back(osg::Vec3(0.805292, -0.217296, 0.543187));
     ground_truth.push_back(osg::Vec3(0.833333, -149.167, -102.5));
@@ -206,7 +210,6 @@ BOOST_AUTO_TEST_CASE(sortBasedOnCentroid_TestCase) {
 
     triangleStructureDataSet(input_triangles);
     std::sort(input_triangles.begin(), input_triangles.end());
-
     for (unsigned int i = 0; i < input_triangles.size(); i++) {
         BOOST_CHECK_CLOSE(input_triangles[i]._data[3].x(),
                           ground_truth[i].x(), 0.001);
@@ -215,16 +218,30 @@ BOOST_AUTO_TEST_CASE(sortBasedOnCentroid_TestCase) {
         BOOST_CHECK_CLOSE(input_triangles[i]._data[3].z(),
                           ground_truth[i].z(), 0.001);
     }
-
 }
 
 
-// BOOST_AUTO_TEST_CASE(convertTrianglesToTextures_TestCase) {
-//
-//     triangleStructureDataSet(input_triangle);
-//
-//
-// }
+BOOST_AUTO_TEST_CASE(convertTrianglesToTextures_TestCase) {
+
+    input_triangles.clear();
+    triangleStructureDataSet(input_triangles);
+    std::vector< osg::ref_ptr<osg::Texture2D> > textures;
+    convertTrianglesToTextures(&input_triangles, textures);
+
+    for (unsigned int i = 0; i < textures.size(); i++) {
+        cv::Mat values = convertOSG2CV(textures[i]->getImage());
+        for (unsigned int j = 0; j < input_triangles.size(); j++) {
+            BOOST_CHECK_CLOSE(input_triangles[j]._data[i].x(),
+                              values.at<cv::Vec3f>(j, 0)[0], 0.001);
+            BOOST_CHECK_CLOSE(input_triangles[j]._data[i].y(),
+                              values.at<cv::Vec3f>(j, 0)[1], 0.001);
+            BOOST_CHECK_CLOSE(input_triangles[j]._data[i].z(),
+                              values.at<cv::Vec3f>(j, 0)[2], 0.001);
+        }
+    }
+
+
+}
 
 
 BOOST_AUTO_TEST_SUITE_END();
