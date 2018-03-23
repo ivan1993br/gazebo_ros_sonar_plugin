@@ -66,29 +66,38 @@ class CollectTrianglesVisitor : public osg::NodeVisitor {
         std::vector<osg::Vec3> vertices;
 };
 
-BOOST_AUTO_TEST_CASE(dataConversion_testCase) {
-    // original array
-    std::vector<osg::Vec3> myArray;
-    for (size_t i = 0; i < 256; i++) {
-        for (size_t j = 0; j < 256; j++) {
-            float value = (float) j / 256;
-            myArray.push_back(osg::Vec3(value, value, value));
-        }
+BOOST_AUTO_TEST_CASE(vector2osgImage_testCase1) {
+    // original vector data
+    std::vector<float> dataIn;
+    for (size_t i = 0; i < 48; i++)
+        dataIn.push_back(i * i * 0.01);
+
+    // pass the data from vector to osg image
+    osg::ref_ptr<osg::Image> image;
+    vec2osgimg(dataIn, image);
+
+    // compare them!
+    std::vector<float> dataOut;
+    osgimg2vec(image, dataOut);
+    BOOST_CHECK(areEqualVectors(dataIn, dataOut) == true);
+}
+
+BOOST_AUTO_TEST_CASE(vector2osgImage_testCase2) {
+    // original vector data
+    std::vector<osg::Vec3> dataIn;
+    for (size_t i = 0; i < 8; i++) {
+        float value = i * i * 0.01;
+        dataIn.push_back(osg::Vec3(value, value, value));
     }
 
-    // convert to image
-    cv::Mat cvImageIn(256, 256, CV_32FC3, (void*) myArray.data());
-    osg::ref_ptr<osg::Image> osgImage = convertCV2OSG(cvImageIn);
+    // pass the data from vector to osg image
+    osg::ref_ptr<osg::Image> image;
+    vec2osgimg(dataIn, image);
 
-    // convert back to array
-    cv::Mat cvImageOut = convertOSG2CV(osgImage);
-
-    // compare vectors
-    std::vector<float> dataIn, dataOut;
-    dataIn.assign((float*) cvImageIn.datastart, (float*) cvImageIn.dataend);
-    dataOut.assign((float*) cvImageOut.datastart, (float*) cvImageOut.dataend);
-
-    BOOST_CHECK_EQUAL_COLLECTIONS(dataIn.begin(), dataIn.end(), dataOut.begin(), dataOut.end());
+    // compare them!
+    std::vector<osg::Vec3> dataOut;
+    osgimg2vec(image, dataOut);
+    BOOST_CHECK(areEqualVectors(dataIn, dataOut) == true);
 }
 
 BOOST_AUTO_TEST_CASE(reverberation_testCase) {

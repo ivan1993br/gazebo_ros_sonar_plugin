@@ -147,4 +147,28 @@ void convertTrianglesToTextures(
 
 }
 
+/**
+ * @brief
+ *
+ */
+template<typename T>
+void vec2osgimg( std::vector<T> const& vec, osg::ref_ptr<osg::Image>& image) {
+    image = new osg::Image;
+    image->allocateImage(vec.size(), 1, 3, GL_RGB, GL_FLOAT);
+    image->setInternalTextureFormat(GL_RGB32F_ARB);
+
+    float* data = (float*)image->data(0);
+    memcpy(data, &vec[0], vec.size() * sizeof(T));
+}
+
+/**
+ * @brief
+ *
+ */
+template<typename T>
+void osgimg2vec( osg::ref_ptr<osg::Image> const& image, std::vector<T>& vec) {
+    T* data = (T*) image->data();
+    vec = std::vector<T>(data, data + image->s());
+}
+
 #endif

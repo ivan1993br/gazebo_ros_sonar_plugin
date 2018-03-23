@@ -21,7 +21,14 @@ namespace test_helper {
                                   uint height = 500
                                 );
     void roundMat(cv::Mat& roi, int precision);
-    bool areEquals(const cv::Mat& image1, const cv::Mat& image2);
+    bool areEqualImages(const cv::Mat& image1, const cv::Mat& image2);
+
+    template <typename T>
+    static bool areEqualVectors(std::vector<T> a, std::vector<T> b) {
+        std::sort(a.begin(), a.end());
+        std::sort(b.begin(), b.end());
+        return (a == b);
+    }
 
     // draw the scene with a small ball in the center with a big cube, cylinder and cone in back
     void makeDemoScene(osg::ref_ptr<osg::Group> root);

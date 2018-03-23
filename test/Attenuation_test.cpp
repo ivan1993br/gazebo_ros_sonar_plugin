@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE(attenuationDemo_testCase) {
         cv::Mat localPoints;
         cv::extractChannel(attShader(roi), localPoints, 0);
         roundMat(localPoints, 4);
-        BOOST_CHECK(areEquals(localPoints, referencePoints[i]) == true);
+        BOOST_CHECK(areEqualImages(localPoints, referencePoints[i]) == true);
 
         // output
         cv::Mat compShader, compSonar;

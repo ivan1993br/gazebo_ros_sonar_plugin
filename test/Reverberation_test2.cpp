@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(reverberation2_testCase) {
     std::cout << "Src image size: " << image->s() << "," << image->t() << std::endl;
     std::cout << "Texture size: " << texture->getTextureWidth() << "," << texture->getTextureHeight() << std::endl;
     std::cout << "Dst image size: " << dst.cols << "," << dst.rows << std::endl;
-    std::cout << "Equals? " << (areEquals(src,dst)? "Yes" : "No") << std::endl;
+    std::cout << "Equals? " << (areEqualImages(src,dst)? "Yes" : "No") << std::endl;
 
     // output
     cv::imshow("src", src);     cv::waitKey();

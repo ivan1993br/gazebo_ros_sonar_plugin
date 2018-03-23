@@ -202,10 +202,10 @@ BOOST_AUTO_TEST_CASE(differentNormalMaps_TestCase) {
     cv::split(normalShader, normalChannels);
 
     // assert that the normal matrixes are different
-    BOOST_CHECK(areEquals(rawChannels[0], normalChannels[0]) == false);
+    BOOST_CHECK(areEqualImages(rawChannels[0], normalChannels[0]) == false);
 
     // assert that the depth matrixes are equals
-    BOOST_CHECK(areEquals(rawChannels[1], normalChannels[1]) == true);
+    BOOST_CHECK(areEqualImages(rawChannels[1], normalChannels[1]) == true);
 
     // plot sonar sample output
     cv::Mat compShader, compSonar;
@@ -244,7 +244,7 @@ BOOST_AUTO_TEST_CASE(pixelValidation_TestCase) {
     roundMat(normalRoi, 5);
     cv::Mat normalGroundTruth = getNormalGroundTruth();
 
-    BOOST_CHECK(areEquals(normalRoi, normalGroundTruth) == true);
+    BOOST_CHECK(areEqualImages(normalRoi, normalGroundTruth) == true);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

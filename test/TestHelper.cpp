@@ -84,7 +84,7 @@ void test_helper::roundMat(cv::Mat& roi, int precision) {
 }
 
 // check if two matrixes are equals
-bool test_helper::areEquals (const cv::Mat& image1, const cv::Mat& image2) {
+bool test_helper::areEqualImages (const cv::Mat& image1, const cv::Mat& image2) {
     if (image1.type() != image2.type()
         || image1.size() != image2.size())
         return false;
