@@ -89,6 +89,13 @@ struct TriangleStruct {
         _data[4].normalize(); // normal
     };
 
+    std::vector<float> getAllDataAsVector(){
+        std::vector<float> output( _data.size()*3, 0.0);
+        for (unsigned int i = 0; i < output.size(); i++)
+            output[i] = _data[i/3][i%3];
+        return output;
+    }
+
     bool operator < (const TriangleStruct& obj_1){
         return _data[3] < obj_1._data[3];
     }

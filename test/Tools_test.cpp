@@ -220,6 +220,20 @@ BOOST_AUTO_TEST_CASE(sortBasedOnCentroid_TestCase) {
     }
 }
 
+BOOST_AUTO_TEST_CASE(getAllDataAsVector_TestCase) {
+
+      float ground_truth[] = {0, 5, 0, -5, -5, 0, 5, -5, 0,
+                              0, -1.6666666, 0, 0, 0, 1};
+
+      input_triangles.clear();
+      triangleStructureDataSet(input_triangles);
+      std::vector<float> output = input_triangles[0].getAllDataAsVector();
+      for (unsigned int i = 0; i < output.size(); i++)
+          BOOST_CHECK_CLOSE(ground_truth[i],
+                            output[i],
+                            0.001);
+}
+
 
 BOOST_AUTO_TEST_CASE(convertTrianglesToTextures_TestCase) {
 
