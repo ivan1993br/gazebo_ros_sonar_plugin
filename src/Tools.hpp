@@ -150,7 +150,7 @@ public:
  */
 void convertTrianglesToTextures(
                   std::vector<TriangleStruct>* triangles,
-                  std::vector< osg::ref_ptr<osg::Texture2D> >& textures);
+                  osg::ref_ptr<osg::Texture2D>& texture);
 
 }
 

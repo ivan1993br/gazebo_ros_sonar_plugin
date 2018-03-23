@@ -239,22 +239,22 @@ BOOST_AUTO_TEST_CASE(convertTrianglesToTextures_TestCase) {
 
     input_triangles.clear();
     triangleStructureDataSet(input_triangles);
-    std::vector< osg::ref_ptr<osg::Texture2D> > textures;
-    convertTrianglesToTextures(&input_triangles, textures);
 
-    for (unsigned int i = 0; i < textures.size(); i++) {
-        cv::Mat values = convertOSG2CV(textures[i]->getImage());
-        for (unsigned int j = 0; j < input_triangles.size(); j++) {
-            BOOST_CHECK_CLOSE(input_triangles[j]._data[i].x(),
-                              values.at<cv::Vec3f>(j, 0)[0], 0.001);
-            BOOST_CHECK_CLOSE(input_triangles[j]._data[i].y(),
-                              values.at<cv::Vec3f>(j, 0)[1], 0.001);
-            BOOST_CHECK_CLOSE(input_triangles[j]._data[i].z(),
-                              values.at<cv::Vec3f>(j, 0)[2], 0.001);
-        }
+    osg::ref_ptr<osg::Texture2D> texture;
+    convertTrianglesToTextures(&input_triangles, texture);
+
+    osg::ref_ptr<osg::Image> osg_image = texture->getImage();
+    cv::Mat cv_image = cv::Mat(osg_image->t(),
+                              osg_image->s(),
+                              CV_32FC1,
+                              osg_image->data());
+
+    for (unsigned int j = 0; j < input_triangles.size(); j++) {
+        cv::Mat col = cv_image.col(j);
+        std::vector<float> data = input_triangles[j].getAllDataAsVector();
+        for (unsigned int i = 0; i < data.size(); i++)
+            BOOST_CHECK_CLOSE(data[i], col.at<float>(i,0), 0.001);
     }
-
-
 }
 
 

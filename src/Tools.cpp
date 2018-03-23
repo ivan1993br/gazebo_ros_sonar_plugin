@@ -54,26 +54,26 @@ void TrianglesVisitor::apply( osg::Geode& geode ) {
 
 void convertTrianglesToTextures(
                       std::vector<TriangleStruct>* triangles,
-                      std::vector< osg::ref_ptr<osg::Texture2D> >& textures){
+                      osg::ref_ptr<osg::Texture2D>& texture){
 
-    for (unsigned int i = 0; i < (*triangles)[0]._data.size(); i++){
-        osg::ref_ptr<osg::Image> image = new osg::Image();
-        image->allocateImage(1, triangles->size(), 3, GL_RGB, GL_FLOAT);
+    osg::ref_ptr<osg::Image> image = new osg::Image();
+    image->allocateImage( triangles->size(),
+                          (*triangles)[0].getAllDataAsVector().size(),
+                          1,
+                          GL_LUMINANCE,
+                          GL_FLOAT);
 
-        for (unsigned int j = 0; j < triangles->size(); j++) {
-            setOSGImagePixel(image, 0, j, 0, (*triangles)[j]._data[i].z());
-            setOSGImagePixel(image, 0, j, 1, (*triangles)[j]._data[i].y());
-            setOSGImagePixel(image, 0, j, 2, (*triangles)[j]._data[i].x());
-        }
-
-        osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
-        texture->setTextureSize(image->s(), image->t());
-        texture->setResizeNonPowerOfTwoHint(false);
-        texture->setUnRefImageDataAfterApply(true);
-        texture->setImage(image);
-
-        textures.push_back(texture);
+    for (unsigned int j = 0; j < triangles->size(); j++){
+        std::vector<float> data = (*triangles)[j].getAllDataAsVector();
+        for (unsigned int i = 0; i < data.size(); i++)
+            setOSGImagePixel(image, i, j, 0, data[i]);
     }
+
+    texture = new osg::Texture2D;
+    texture->setTextureSize(image->s(), image->t());
+    texture->setResizeNonPowerOfTwoHint(false);
+    texture->setUnRefImageDataAfterApply(true);
+    texture->setImage(image);
 }
 
 
