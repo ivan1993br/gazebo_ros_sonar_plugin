@@ -46,8 +46,8 @@ void setOSGImagePixel(osg::ref_ptr<osg::Image>& image,
   unsigned int channel,
   T value ){
 
-    bool valid = ( x < (unsigned int) image->s() )
-    && ( y < (unsigned int) image->t() )
+    bool valid = ( y < (unsigned int) image->s() )
+    && ( x < (unsigned int) image->t() )
     && ( channel < (unsigned int) image->r() );
 
     if( !valid )
