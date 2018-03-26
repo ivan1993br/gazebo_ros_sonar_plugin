@@ -24,9 +24,6 @@ namespace normal_depth_map {
 #define SHADER_PATH_FRAG "normal_depth_map/shaders/normalDepthMap.frag"
 #define SHADER_PATH_VERT "normal_depth_map/shaders/normalDepthMap.vert"
 
-// #define SHADER_PATH_FRAG "normal_depth_map/shaders/temp/reverberation.frag"
-// #define SHADER_PATH_VERT "normal_depth_map/shaders/temp/reverberation.vert"
-
 NormalDepthMap::NormalDepthMap(float maxRange ) {
     _normalDepthMapNode = createTheNormalDepthMapShaderNode(maxRange);
 }
@@ -99,10 +96,18 @@ bool NormalDepthMap::isDrawDepth() {
 
 void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     _normalDepthMapNode->addChild(node);
-    _normalDepthMapNode->accept(_visitor);
 
+    // pass the triangles data to GLSL as uniform
+    _normalDepthMapNode->accept(_visitor);
     std::sort( (*_visitor.triangles_data.triangles).begin(),
                (*_visitor.triangles_data.triangles).end());
+
+    osg::ref_ptr<osg::StateSet> ss = _normalDepthMapNode->getOrCreateStateSet();
+    osg::ref_ptr<osg::Texture2D> trianglesTexture;
+    convertTrianglesToTextures(_visitor.triangles_data.triangles, trianglesTexture);
+    ss->addUniform(new osg::Uniform(osg::Uniform::SAMPLER_2D, "trianglesTex"));
+    ss->setTextureAttributeAndModes(0, trianglesTexture, osg::StateAttribute::ON);
+    ss->addUniform(new osg::Uniform("trianglesTexSize", (int) _visitor.triangles_data.triangles->size()));
 }
 
 osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(

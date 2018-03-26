@@ -253,7 +253,7 @@ BOOST_AUTO_TEST_CASE(convertTrianglesToTextures_TestCase) {
         cv::Mat col = cv_image.col(j);
         std::vector<float> data = input_triangles[j].getAllDataAsVector();
         for (unsigned int i = 0; i < data.size(); i++)
-            BOOST_CHECK_CLOSE(data[i], col.at<float>(i,0), 0.001);
+            BOOST_CHECK_CLOSE(data[i], col.at<float>(i,0), 0.0001);
     }
 }
 

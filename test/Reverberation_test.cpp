@@ -35,37 +35,6 @@ cv::Mat setChannelValue(cv::Mat img, int channel, uchar value) {
    return out;
 }
 
-struct CollectTriangles {
-    CollectTriangles() {}
-
-    inline void operator () (const osg::Vec3& v1,const osg::Vec3& v2,const osg::Vec3& v3, bool treatVertexDataAsTemporary) {
-        verts.push_back(v1);
-        verts.push_back(v2);
-        verts.push_back(v3);
-    }
-
-    std::vector<osg::Vec3> verts;
-};
-
-
-class CollectTrianglesVisitor : public osg::NodeVisitor {
-
-    public:
-        CollectTrianglesVisitor() {
-            setTraversalMode( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN );
-            vertices.clear();
-        }
-
-        void apply( osg::Geode& geode ) {
-            for ( unsigned int i = 0; i<geode.getNumDrawables(); ++i ) {
-                osg::TriangleFunctor<CollectTriangles> triangleCollector;
-                geode.getDrawable(i)->accept(triangleCollector);
-                vertices.insert(vertices.end(), triangleCollector.verts.begin(), triangleCollector.verts.end());
-            }
-        }
-        std::vector<osg::Vec3> vertices;
-};
-
 BOOST_AUTO_TEST_CASE(vector2osgImage_testCase1) {
     // original vector data
     std::vector<float> dataIn;
@@ -104,27 +73,6 @@ BOOST_AUTO_TEST_CASE(reverberation_testCase) {
     // create a simple scene with multiple objects
     osg::ref_ptr<osg::Group> scene = new osg::Group();
     makeDemoScene(scene);
-
-    // get all triangles' vertices from all scene models
-    CollectTrianglesVisitor visitor;
-    scene->accept(visitor);
-
-    // until OpenGL 4.3, arrays in GLSL must be fixed, compile-time size.
-    // In this case, the triangles' vertices are stored as texture and passed to shader.
-    cv::Mat cvImage(visitor.vertices.size(), 1, CV_32FC3, (void*) visitor.vertices.data());
-    osg::ref_ptr<osg::Image> osgImage = convertCV2OSG(cvImage);
-    osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
-    texture->setTextureSize(osgImage->s(), osgImage->t());
-    texture->setResizeNonPowerOfTwoHint(false);
-    texture->setImage(osgImage);
-
-    // pass the texture data to GLSL as uniform
-    osg::StateSet* ss = scene->getOrCreateStateSet();
-    osg::Uniform* vertexUniform = new osg::Uniform(osg::Uniform::SAMPLER_2D, "vertexMap");
-    vertexUniform->set(0);
-    ss->addUniform(vertexUniform);
-    ss->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
-    ss->addUniform(new osg::Uniform("vertexMapSize", (int) visitor.vertices.size()));
 
     // sonar parameters
     float maxRange = 50;      // 50 meters

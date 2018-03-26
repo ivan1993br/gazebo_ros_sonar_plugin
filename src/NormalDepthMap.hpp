@@ -8,7 +8,10 @@
 #ifndef SIMULATION_NORMAL_DEPTH_MAP_SRC_NORMALDEPTHMAP_HPP_
 #define SIMULATION_NORMAL_DEPTH_MAP_SRC_NORMALDEPTHMAP_HPP_
 
+// C++ includes
 #include <vector>
+
+// OSG includes
 #include <osg/Node>
 #include <osg/Group>
 #include <osg/ref_ptr>

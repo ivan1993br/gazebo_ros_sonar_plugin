@@ -126,8 +126,9 @@ osg::ref_ptr<osg::Group> createSimpleScene() {
 osg::ref_ptr<osg::Group> createNormalMapSimpleScene() {
     osg::ref_ptr<osg::Group> root = new osg::Group();
     osg::ref_ptr<osg::StateSet> stateset = new osg::StateSet();
-    stateset->addUniform(new osg::Uniform("diffuseTexture", TEXTURE_UNIT_DIFFUSE));
-    stateset->addUniform(new osg::Uniform("normalTexture", TEXTURE_UNIT_NORMAL));
+    stateset->addUniform(new osg::Uniform("diffuseTex", TEXTURE_UNIT_DIFFUSE));
+    stateset->addUniform(new osg::Uniform("normalTex", TEXTURE_UNIT_NORMAL));
+    stateset->addUniform(new osg::Uniform("useNormalTex", true));
     stateset->setDataVariance(osg::Object::STATIC);
     root->setStateSet(stateset);
 
@@ -140,8 +141,9 @@ osg::ref_ptr<osg::Group> createNormalMapSimpleScene() {
 osg::ref_ptr<osg::Group> createNormalMapMultiScene() {
     osg::ref_ptr<osg::Group> root = new osg::Group();
     osg::ref_ptr<osg::StateSet> stateset = new osg::StateSet();
-    stateset->addUniform(new osg::Uniform("diffuseTexture", TEXTURE_UNIT_DIFFUSE));
-    stateset->addUniform(new osg::Uniform("normalTexture", TEXTURE_UNIT_NORMAL));
+    stateset->addUniform(new osg::Uniform("diffuseTex", TEXTURE_UNIT_DIFFUSE));
+    stateset->addUniform(new osg::Uniform("normalTex", TEXTURE_UNIT_NORMAL));
+    stateset->addUniform(new osg::Uniform("useNormalTex", true));
     stateset->setDataVariance(osg::Object::STATIC);
     root->setStateSet(stateset);
 
