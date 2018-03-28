@@ -16,7 +16,6 @@ uniform sampler2D normalTex;
 uniform bool useNormalTex;
 
 uniform sampler2D trianglesTex;
-uniform int trianglesTexSize;
 
 out vec4 outData;
 
@@ -25,6 +24,29 @@ struct Ray {
     vec3 origin;
     vec3 direction;
 };
+
+// triangle definition
+struct Triangle {
+    vec3 a;     // vertex A
+    vec3 b;     // vertex B
+    vec3 c;     // vertex C
+    vec3 k;     // centroid
+    vec3 n;     // normal
+};
+
+float getTexData(int i, int j) {
+    return texelFetch(trianglesTex, ivec2(i,j), 0).r;
+}
+
+Triangle getTriangleData(int idx) {
+    Triangle triangle;
+    triangle.a = vec3(getTexData(idx,0), getTexData(idx,1), getTexData(idx,2));
+    triangle.b = vec3(getTexData(idx,3), getTexData(idx,4), getTexData(idx,5));
+    triangle.c = vec3(getTexData(idx,6), getTexData(idx,7), getTexData(idx,8));
+    triangle.k = vec3(getTexData(idx,9), getTexData(idx,10), getTexData(idx,11));
+    triangle.n = vec3(getTexData(idx,12), getTexData(idx,13), getTexData(idx,14));
+    return triangle;
+}
 
 // builds a plane with the specified three coordinates
 vec4 buildPlane(vec3 a, vec3 b, vec3 c) {
@@ -111,40 +133,27 @@ vec4 primaryReflections() {
     return output;
 }
 
-// secondary reflections: rasterization using triangle intersection
+// secondary reflections: ray-triangle intersection
 vec4 secondaryReflections(in vec4 primaryRefl) {
-    vec3 data = texelFetch(trianglesTex, ivec2(gl_FragCoord.xy), 0).xyz;
-
     Ray ray;
     ray.origin = directionEyeSpace;
     ray.direction = reflectedDir;
 
-    // ray-triangle intersection process
+    // TODO: test ray-triangle intersection only for pixels with valid normal values
+    // for primary reflections
     bool hasIntersection = false;
     vec3 intersectedPoint;
+    ivec2 texSize = textureSize(trianglesTex, 0);
 
-    int maxSteps = trianglesTexSize / 5;
-    for(int i = 0; i < maxSteps; i++) {
-        // TODO: test ray-triangle intersection only for pixels with positive normal values
-        // in primary reflection.
-
-        // triangle's vertices
-        vec3 A = vec3(data[15 * i + 0], data[15 * i + 1], data[15 * i + 2]);
-        vec3 B = vec3(data[15 * i + 3], data[15 * i + 4], data[15 * i + 5]);
-        vec3 C = vec3(data[15 * i + 6], data[15 * i + 7], data[15 * i + 8]);
-
-        // centroid
-        vec3 K = vec3(data[15 * i + 9], data[15 * i + 10], data[15 * i + 11]);
-
-        // normal
-        vec3 N = vec3(data[15 * i + 12], data[15 * i + 13], data[15 * i + 14]);
+    for (int idx = 0; idx < texSize.x; idx++) {
+        Triangle triangle = getTriangleData(idx);
 
         // TODO: test triangle intersection
         // hasIntersection = rayTriangleIntersection(ray, A, B, C, intersectedPoint);
     }
 
-    vec4 myOut;
-    return myOut;
+    vec4 output = vec4(0,0,0,0);
+    return output;
 }
 
 void main() {
@@ -154,6 +163,6 @@ void main() {
     // secondary reflections by ray-tracing
     vec4 secondaryRefl = secondaryReflections(primaryRefl);
 
-    // output data
+    // TODO: outData = primary and secondary reflections
     outData = primaryRefl;
 }

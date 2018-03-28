@@ -60,8 +60,9 @@ void convertTrianglesToTextures(
     image->allocateImage( triangles->size(),
                           (*triangles)[0].getAllDataAsVector().size(),
                           1,
-                          GL_LUMINANCE,
+                          GL_RED,
                           GL_FLOAT);
+    image->setInternalTextureFormat(GL_R32F);
 
     for (unsigned int j = 0; j < triangles->size(); j++){
         std::vector<float> data = (*triangles)[j].getAllDataAsVector();

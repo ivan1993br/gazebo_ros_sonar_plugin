@@ -107,7 +107,6 @@ void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     convertTrianglesToTextures(_visitor.triangles_data.triangles, trianglesTexture);
     ss->addUniform(new osg::Uniform(osg::Uniform::SAMPLER_2D, "trianglesTex"));
     ss->setTextureAttributeAndModes(0, trianglesTexture, osg::StateAttribute::ON);
-    ss->addUniform(new osg::Uniform("trianglesTexSize", (int) _visitor.triangles_data.triangles->size()));
 }
 
 osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
