@@ -14,15 +14,17 @@
 #include <osg/Uniform>
 #include <osgDB/FileUtils>
 #include <osg/ShapeDrawable>
+#include <osgDB/ReadFile>
 
 #include <iostream>
 #include <algorithm>
 
-
 namespace normal_depth_map {
 
-#define SHADER_PATH_FRAG "normal_depth_map/shaders/normalDepthMap.frag"
-#define SHADER_PATH_VERT "normal_depth_map/shaders/normalDepthMap.vert"
+#define FIRST_PASS_VERT "normal_depth_map/shaders/firstPass.vert"
+#define FIRST_PASS_FRAG "normal_depth_map/shaders/firstPass.frag"
+#define SECND_PASS_VERT "normal_depth_map/shaders/secondPass.vert"
+#define SECND_PASS_FRAG "normal_depth_map/shaders/secondPass.frag"
 
 NormalDepthMap::NormalDepthMap(float maxRange ) {
     _normalDepthMapNode = createTheNormalDepthMapShaderNode(maxRange);
@@ -94,6 +96,44 @@ bool NormalDepthMap::isDrawDepth() {
     return drawDepth;
 }
 
+osg::ref_ptr<osg::Camera> NormalDepthMap::createRTTCamera(osg::Camera::BufferComponent buffer,
+                             osg::ref_ptr<osg::Texture2D> tex) {
+    osg::ref_ptr<osg::Camera> camera = new osg::Camera;
+    camera->setClearColor(osg::Vec4());
+    camera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    camera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+    camera->setRenderOrder(osg::Camera::PRE_RENDER);
+
+    tex->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+    tex->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+    camera->setViewport(0, 0, tex->getTextureWidth(), tex->getTextureHeight());
+    camera->attach(buffer, tex);
+    return camera.release();
+}
+
+osg::ref_ptr<osg::Texture2D> createFloatTexture(int width, int height) {
+    osg::ref_ptr<osg::Texture2D> tex2D = new osg::Texture2D;
+    tex2D->setTextureSize(width, height);
+    tex2D->setInternalFormat(GL_RGBA16F_ARB);
+    tex2D->setSourceFormat(GL_RGBA);
+    tex2D->setSourceType(GL_FLOAT);
+    return tex2D.release();
+}
+
+osg::ref_ptr<osg::StateSet> setShaderProgram(osg::ref_ptr<osg::Camera> pass,
+                                             const std::string& vert,
+                                             const std::string& frag)
+{
+    osg::ref_ptr<osg::Program> program = new osg::Program;
+    program->addShader(osgDB::readRefShaderFile(vert));
+    program->addShader(osgDB::readRefShaderFile(frag));
+    osg::ref_ptr<osg::StateSet> ss = pass->getOrCreateStateSet();
+    ss->setAttributeAndModes(
+        program.get(),
+        osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+    return ss;
+}
+
 void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     _normalDepthMapNode->addChild(node);
 
@@ -116,19 +156,25 @@ osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
                                                 bool drawNormal) {
 
     osg::ref_ptr<osg::Group> localRoot = new osg::Group();
+
+    // osg::ref_ptr<osg::Texture2D> firstTex = createFloatTexture();
+
+    // osg::ref_ptr<osg::Camera> firstPass = createRTTCamera(osg::Camera::COLOR_BUFFER0, p.pass2Positions);
+
+
     osg::ref_ptr<osg::Program> program(new osg::Program());
 
-    osg::ref_ptr<osg::Shader> shaderVertex = osg::Shader::readShaderFile(
-                                              osg::Shader::VERTEX,
-                                              osgDB::findDataFile(
-                                                             SHADER_PATH_VERT));
+    osg::ref_ptr<osg::Shader> firstPassVert = osg::Shader::readShaderFile(
+                                                osg::Shader::VERTEX,
+                                                osgDB::findDataFile(
+                                                    FIRST_PASS_VERT));
 
-    osg::ref_ptr<osg::Shader> shaderFragment = osg::Shader::readShaderFile(
-                                               osg::Shader::FRAGMENT,
-                                               osgDB::findDataFile(
-                                                             SHADER_PATH_FRAG));
-    program->addShader(shaderFragment);
-    program->addShader(shaderVertex);
+    osg::ref_ptr<osg::Shader> firstPassFrag = osg::Shader::readShaderFile(
+                                                osg::Shader::FRAGMENT,
+                                                osgDB::findDataFile(
+                                                    FIRST_PASS_FRAG));
+    program->addShader(firstPassVert);
+    program->addShader(firstPassFrag);
 
     osg::ref_ptr<osg::StateSet> ss = localRoot->getOrCreateStateSet();
     ss->setAttribute(program);

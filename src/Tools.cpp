@@ -76,6 +76,4 @@ void convertTrianglesToTextures(
     texture->setUnRefImageDataAfterApply(true);
     texture->setImage(image);
 }
-
-
 }

@@ -92,6 +92,13 @@ private:
                               float attenuationCoefficient = 0,
                               bool drawDepth = true,
                               bool drawNormal = true);
+
+    osg::ref_ptr<osg::Texture2D> createFloatTexture();
+    osg::ref_ptr<osg::Camera> createRTTCamera(osg::Camera::BufferComponent buffer,
+                              osg::ref_ptr<osg::Texture2D> tex);
+    osg::ref_ptr<osg::StateSet> setShaderProgram(osg::ref_ptr<osg::Camera> pass,
+                                               const std::string& vert,
+                                               const std::string& frag);
 };
 }
 
