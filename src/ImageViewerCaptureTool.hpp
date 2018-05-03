@@ -102,7 +102,7 @@ public:
 
 protected:
 
-    void initializeProperties(uint width, uint height);
+    void initializeProperties(uint width, uint height, double fovY = (M_PI / 3));
 
     osg::ref_ptr<WindowCaptureScreen> _capture;
     osg::ref_ptr<osgViewer::Viewer> _viewer;

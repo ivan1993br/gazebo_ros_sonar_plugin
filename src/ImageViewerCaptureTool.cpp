@@ -21,14 +21,10 @@ ImageViewerCaptureTool::ImageViewerCaptureTool( double fovY, double fovX,
         height = width * tan(fovY * 0.5) / tan(fovX * 0.5);
     }
 
-    double aspectRatio = width * 1.0 / height;
-
-    initializeProperties(width, height);
-    _viewer->getCamera()->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
-    _viewer->getCamera()->setProjectionMatrixAsPerspective(fovY * 180.0 / M_PI, aspectRatio, 0.1, 1000);
+    initializeProperties(width, height, fovY);
 }
 
-void ImageViewerCaptureTool::initializeProperties(uint width, uint height) {
+void ImageViewerCaptureTool::initializeProperties(uint width, uint height, double fovY) {
     _viewer = new osgViewer::Viewer;
 
     osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
@@ -36,12 +32,19 @@ void ImageViewerCaptureTool::initializeProperties(uint width, uint height) {
     traits->height = height;
     traits->pbuffer = true;
     traits->readDISPLAY();
+    osg::ref_ptr<osg::GraphicsContext> gfxc = osg::GraphicsContext::createGraphicsContext(traits.get());
 
     osg::ref_ptr<osg::Camera> camera = this->_viewer->getCamera();
-    osg::ref_ptr<osg::GraphicsContext> gfxc = osg::GraphicsContext::createGraphicsContext(traits.get());
     camera->setGraphicsContext(gfxc);
     camera->setDrawBuffer(GL_FRONT);
+    camera->setReadBuffer(GL_FRONT);
     camera->setViewport(new osg::Viewport(0, 0, width, height));
+    camera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
+    camera->setProjectionMatrixAsPerspective(osg::RadiansToDegrees(fovY), (width * 1.0 / height), 0.1, 1000);
+
+    // if the view matrix is invalid (NaN), use the identity
+    if (camera->getViewMatrix().isNaN())
+        camera->setViewMatrix(osg::Matrix::identity());
 
     // initialize the class to get the image in float data resolution
     _capture = new WindowCaptureScreen(gfxc);
@@ -51,11 +54,6 @@ void ImageViewerCaptureTool::initializeProperties(uint width, uint height) {
 osg::ref_ptr<osg::Image> ImageViewerCaptureTool::grabImage(osg::ref_ptr<osg::Node> node) {
     // set the current root node
     _viewer->setSceneData(node);
-
-    // if the view matrix is invalid (NaN), use the identity
-    osg::ref_ptr<osg::Camera> camera = _viewer->getCamera();
-    if (camera->getViewMatrix().isNaN())
-        camera->setViewMatrix(osg::Matrix::identity());
 
     // grab the current frame
     _viewer->frame();

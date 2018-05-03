@@ -58,11 +58,11 @@ cv::Mat test_helper::computeNormalDepthMap(  osg::ref_ptr<osg::Group> root,
 
     // grab scene
     osg::ref_ptr<osg::Image> osgImage = capture.grabImage(normalDepthMap.getNormalDepthMapNode());
-    osg::ref_ptr<osg::Image> osgDepth = capture.getDepthBuffer();
+    // osg::ref_ptr<osg::Image> osgDepth = capture.getDepthBuffer();
     cv::Mat cvImage = cv::Mat(osgImage->t(), osgImage->s(), CV_32FC3, osgImage->data());
     // cv::Mat cvDepth = cv::Mat(osgDepth->t(), osgDepth->s(), CV_32FC1, osgDepth->data());
     // cvDepth = cvDepth.mul( cv::Mat1f(cvDepth < 1) / 255);
-    //
+
     // std::vector<cv::Mat> channels;
     // cv::split(cvImage, channels);
     // channels[1] = cvDepth;
