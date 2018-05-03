@@ -157,11 +157,6 @@ osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
 
     osg::ref_ptr<osg::Group> localRoot = new osg::Group();
 
-    // osg::ref_ptr<osg::Texture2D> firstTex = createFloatTexture();
-
-    // osg::ref_ptr<osg::Camera> firstPass = createRTTCamera(osg::Camera::COLOR_BUFFER0, p.pass2Positions);
-
-
     osg::ref_ptr<osg::Program> program(new osg::Program());
 
     osg::ref_ptr<osg::Shader> firstPassVert = osg::Shader::readShaderFile(
