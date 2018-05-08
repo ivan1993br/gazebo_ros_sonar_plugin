@@ -106,6 +106,7 @@ protected:
 
     osg::ref_ptr<WindowCaptureScreen> _capture;
     osg::ref_ptr<osgViewer::Viewer> _viewer;
+    osg::ref_ptr<osg::Camera> _postRenderCamera;
 };
 
 } /* namespace normal_depth_map */

@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(fboRtt_testCase) {
     // Note it has no image data; not required.
     osg::Texture2D* tex = new osg::Texture2D;
     tex->setTextureSize( winW, winH );
-    tex->setInternalFormat( GL_RGBA16F_ARB );
+    tex->setInternalFormat( GL_RGBA32F_ARB );
     tex->setSourceFormat(GL_RGBA);
     tex->setSourceType(GL_FLOAT);
     tex->setResizeNonPowerOfTwoHint( false );

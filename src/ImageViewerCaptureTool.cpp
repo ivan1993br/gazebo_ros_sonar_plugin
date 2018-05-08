@@ -1,6 +1,7 @@
 #include "ImageViewerCaptureTool.hpp"
 #include <iostream>
 #include <unistd.h>
+#include <osg/Texture2D>
 
 namespace normal_depth_map {
 
@@ -34,26 +35,59 @@ void ImageViewerCaptureTool::initializeProperties(uint width, uint height, doubl
     traits->readDISPLAY();
     osg::ref_ptr<osg::GraphicsContext> gfxc = osg::GraphicsContext::createGraphicsContext(traits.get());
 
-    osg::ref_ptr<osg::Camera> camera = this->_viewer->getCamera();
-    camera->setGraphicsContext(gfxc);
-    camera->setDrawBuffer(GL_FRONT);
-    camera->setReadBuffer(GL_FRONT);
-    camera->setViewport(new osg::Viewport(0, 0, width, height));
-    camera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
-    camera->setProjectionMatrixAsPerspective(osg::RadiansToDegrees(fovY), (width * 1.0 / height), 0.1, 1000);
+    // setup RTT texture
+    osg::Texture2D* rttTexture = new osg::Texture2D;
+    rttTexture->setTextureSize( width, height );
+    rttTexture->setInternalFormat( GL_RGBA32F_ARB );
+    rttTexture->setSourceFormat( GL_RGBA );
+    rttTexture->setSourceType( GL_FLOAT );
+    rttTexture->setResizeNonPowerOfTwoHint( false );
+    rttTexture->setFilter( osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR );
+    rttTexture->setFilter( osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR );
 
-    // if the view matrix is invalid (NaN), use the identity
-    if (camera->getViewMatrix().isNaN())
-        camera->setViewMatrix(osg::Matrix::identity());
+    // render camera to texture, with frame buffer
+    osg::Camera* rttCamera = _viewer->getCamera();
+    rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    rttCamera->setGraphicsContext( gfxc );
+    rttCamera->setDrawBuffer( GL_FRONT );
+    rttCamera->setReadBuffer( GL_FRONT );
+    rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
+    rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+    rttCamera->setViewport( 0, 0, width, height );
+    rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    rttCamera->setProjectionMatrixAsPerspective( osg::RadiansToDegrees( fovY ), ( width * 1.0 / height ), 0.1, 1000 );
+    rttCamera->attach( osg::Camera::COLOR_BUFFER, rttTexture );
+
+    // set RTT texture to quad
+    osg::Geode* geode( new osg::Geode );
+    geode->addDrawable( osg::createTexturedQuadGeometry(
+        osg::Vec3(-1,-1,0), osg::Vec3(2.0,0.0,0.0), osg::Vec3(0.0,2.0,0.0)) );
+    geode->getOrCreateStateSet()->setTextureAttributeAndModes( 0, rttTexture );
+    geode->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
+
+    // display the scene in post render camera
+    _postRenderCamera = new osg::Camera;
+    _postRenderCamera->setClearMask( 0 );
+    _postRenderCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER, osg::Camera::FRAME_BUFFER );
+    _postRenderCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF );
+    _postRenderCamera->setRenderOrder( osg::Camera::POST_RENDER );
+    _postRenderCamera->setViewMatrix( osg::Matrixd::identity() );
+    _postRenderCamera->addChild( geode );
 
     // initialize the class to get the image in float data resolution
-    _capture = new WindowCaptureScreen(gfxc);
-    camera->setFinalDrawCallback(_capture);
+    _capture = new WindowCaptureScreen( gfxc );
+    rttCamera->setFinalDrawCallback( _capture );
 }
 
 osg::ref_ptr<osg::Image> ImageViewerCaptureTool::grabImage(osg::ref_ptr<osg::Node> node) {
+    // setup the final OSG scene
+    osg::ref_ptr< osg::Group > root = new osg::Group;
+    root->addChild( _postRenderCamera );
+    root->addChild( node );
+
     // set the current root node
-    _viewer->setSceneData(node);
+    _viewer->setSceneData(root.get());
+    _viewer->realize();
 
     // grab the current frame
     _viewer->frame();
@@ -124,7 +158,6 @@ osg::ref_ptr<osg::Image> WindowCaptureScreen::captureImage() {
 osg::ref_ptr<osg::Image> WindowCaptureScreen::getDepthBuffer() {
     return _depth_buffer;
 }
-
 
 void WindowCaptureScreen::operator ()(osg::RenderInfo& renderInfo) const {
     osg::ref_ptr<osg::GraphicsContext> gc = renderInfo.getState()->getGraphicsContext();
