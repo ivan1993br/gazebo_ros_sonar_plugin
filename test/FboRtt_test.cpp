@@ -22,19 +22,12 @@ using namespace test_helper;
 
 BOOST_AUTO_TEST_SUITE(FboRtt)
 
-const int winW( 800 ), winH( 600 );
-
 struct SnapImage : public osg::Camera::DrawCallback {
     SnapImage(osg::GraphicsContext* gc)
     {
         _image = new osg::Image;
         if (gc->getTraits()) {
-            GLenum pixelFormat;
-            if (gc->getTraits()->alpha)
-                pixelFormat = GL_RGBA;
-            else
-                pixelFormat = GL_RGB;
-
+            GLenum pixelFormat = (gc->getTraits()->alpha) ? GL_RGBA : GL_RGB;
             int width = gc->getTraits()->width;
             int height = gc->getTraits()->height;
             _image->allocateImage(width, height, 1, pixelFormat, GL_UNSIGNED_BYTE);
@@ -52,7 +45,6 @@ struct SnapImage : public osg::Camera::DrawCallback {
                               GL_UNSIGNED_BYTE);
             osgDB::writeImageFile(*_image,  "./Test.png");
         }
-
     }
 
     mutable osg::ref_ptr<osg::Image>    _image;
@@ -60,10 +52,12 @@ struct SnapImage : public osg::Camera::DrawCallback {
 
 BOOST_AUTO_TEST_CASE(fboRtt_testCase) {
     osg::ref_ptr< osg::Group > root( new osg::Group );
-    makeDemoScene(root);
+    root->addChild( osgDB::readNodeFile( "/home/romulo/Tools/OpenSceneGraph-Data/cow.osg" ) );
+    unsigned int winW = 800;
+    unsigned int winH = 600;
 
     osgViewer::Viewer viewer;
-    viewer.setUpViewInWindow( 10, 30, winW, winH );
+    viewer.setUpViewInWindow( 0, 0, winW, winH );
     viewer.setSceneData( root.get() );
     viewer.realize();
 
@@ -87,7 +81,7 @@ BOOST_AUTO_TEST_CASE(fboRtt_testCase) {
     rootCamera->setViewport( 0, 0, winW, winH );
     rootCamera->setRenderOrder( osg::Camera::PRE_RENDER );
     rootCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
-    rootCamera->attach( osg::Camera::COLOR_BUFFER, tex);//, 0, 0, false, 8, 8 );
+    rootCamera->attach( osg::Camera::COLOR_BUFFER, tex);
 
     // Set RTT texture to quad
     osg::Geode* geode( new osg::Geode );
