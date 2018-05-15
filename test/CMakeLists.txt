@@ -33,7 +33,7 @@ rock_testsuite(Tools_core Tools_test.cpp TestHelper.cpp
     LIBS ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
     DEPS_PKGCONFIG openscenegraph opencv)
 
-rock_testsuite(FboRtt_core FboRtt_test.cpp TestHelper.cpp
+rock_testsuite(FboMrt_core FboMrt_test.cpp TestHelper.cpp
     DEPS normal_depth_map
     LIBS ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
     DEPS_PKGCONFIG openscenegraph opencv)
