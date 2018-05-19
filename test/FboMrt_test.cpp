@@ -36,18 +36,11 @@ struct SnapImage : public osg::Camera::DrawCallback {
         osg::ref_ptr<osg::Image> mColor = new osg::Image();
         mColor->readImageFromCurrentTexture(renderInfo.getContextID(), true, GL_UNSIGNED_BYTE);
         osgDB::ReaderWriter::WriteResult wrColor = osgDB::Registry::instance()->writeImage(*mColor, "./Test-color.png", NULL);
-        if (!wrColor.success()) {
-            osg::notify(osg::WARN) << "Color image: failed! (" << wrColor.message() << ")" << std::endl;
-        }
 
         // depth buffer
         renderInfo.getState()->applyTextureAttribute(0, _texDepth);
         osg::ref_ptr<osg::Image> mDepth = new osg::Image();
         mDepth->readImageFromCurrentTexture(renderInfo.getContextID(), true, GL_UNSIGNED_BYTE);
-        osgDB::ReaderWriter::WriteResult wrDepth = osgDB::Registry::instance()->writeImage(*mDepth, "./Test-depth.png", NULL);
-        if (!wrDepth.success()) {
-            osg::notify(osg::WARN) << "Depth image: failed! (" << wrDepth.message() << ")" << std::endl;
-        }
     }
     osg::ref_ptr<osg::Texture2D> _texColor;
     osg::ref_ptr<osg::Texture2D> _texDepth;
@@ -62,9 +55,9 @@ osg::Camera* setupMRTCamera( osg::ref_ptr<osg::Camera> camera, std::vector<osg::
 
     osg::Texture2D* tex = new osg::Texture2D;
     tex->setTextureSize( w, h );
-    tex->setInternalFormat( GL_RGB );
+    tex->setInternalFormat( GL_RGB32F_ARB );
     tex->setSourceFormat( GL_RGBA );
-    tex->setSourceType( GL_UNSIGNED_BYTE );
+    tex->setSourceType( GL_FLOAT );
     tex->setResizeNonPowerOfTwoHint( false );
     tex->setFilter( osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR );
     tex->setFilter( osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR );
@@ -82,10 +75,9 @@ osg::Camera* setupMRTCamera( osg::ref_ptr<osg::Camera> camera, std::vector<osg::
     return camera.release();
 }
 
-
 BOOST_AUTO_TEST_CASE(fboRtt_testCase) {
     osg::ref_ptr< osg::Group > root( new osg::Group );
-    root->addChild( osgDB::readNodeFile( "/home/romulo/Tools/OpenSceneGraph-Data/cow.osg" ) );
+    makeDemoScene(root);
     unsigned int winW = 800;
     unsigned int winH = 600;
 
@@ -101,8 +93,7 @@ BOOST_AUTO_TEST_CASE(fboRtt_testCase) {
 
     // Set RTT texture to quad
     osg::Geode* geode( new osg::Geode );
-    geode->addDrawable( osg::createTexturedQuadGeometry(
-        osg::Vec3(-1,-1,0), osg::Vec3(2.0,0.0,0.0), osg::Vec3(0.0,2.0,0.0)) );
+    geode->addDrawable( osg::createTexturedQuadGeometry(osg::Vec3(-1,-1,0), osg::Vec3(2.0,0.0,0.0), osg::Vec3(0.0,2.0,0.0)) );
     geode->getOrCreateStateSet()->setTextureAttributeAndModes( 0, attachedTextures[0] );
     geode->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
     geode->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF );
@@ -117,10 +108,10 @@ BOOST_AUTO_TEST_CASE(fboRtt_testCase) {
 
     root->addChild(postRenderCamera);
 
-    SnapImage* finalDrawCallback = new SnapImage(viewer.getCamera()->getGraphicsContext(),
-                                                 attachedTextures[0],
-                                                 attachedTextures[1]);
-    mrtCamera->setFinalDrawCallback(finalDrawCallback);
+    // SnapImage* finalDrawCallback = new SnapImage(viewer.getCamera()->getGraphicsContext(),
+    //                                              attachedTextures[0],
+    //                                              attachedTextures[1]);
+    // mrtCamera->setFinalDrawCallback(finalDrawCallback);
 
     viewer.run();
 }

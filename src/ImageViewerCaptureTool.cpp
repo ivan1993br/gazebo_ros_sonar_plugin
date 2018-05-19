@@ -1,7 +1,6 @@
 #include "ImageViewerCaptureTool.hpp"
 #include <iostream>
 #include <unistd.h>
-#include <osg/Texture2D>
 
 namespace normal_depth_map {
 
@@ -25,6 +24,36 @@ ImageViewerCaptureTool::ImageViewerCaptureTool( double fovY, double fovX,
     initializeProperties(width, height, fovY);
 }
 
+osg::Camera* ImageViewerCaptureTool::setupMRTCamera( osg::ref_ptr<osg::Camera> camera, std::vector<osg::Texture2D*>& attachedTextures, osg::ref_ptr<osg::GraphicsContext> gfxc ) {
+    uint w = gfxc->getTraits()->width;
+    uint h = gfxc->getTraits()->height;
+
+    // setup camera
+    camera->setClearColor( osg::Vec4() );
+    camera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    camera->setGraphicsContext( gfxc );
+    camera->setDrawBuffer( GL_FRONT );
+    camera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+    camera->setRenderOrder( osg::Camera::PRE_RENDER, 0 );
+    camera->setViewport( 0, 0, w, h );
+    camera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    camera->setViewMatrix( osg::Matrix::identity() );
+
+    // setup rendered texture
+    osg::Texture2D* tex = new osg::Texture2D;
+    tex->setTextureSize( w, h );
+    tex->setInternalFormat( GL_RGB32F );
+    tex->setSourceFormat( GL_RGBA );
+    tex->setSourceType( GL_FLOAT );
+    tex->setResizeNonPowerOfTwoHint( false );
+    tex->setFilter( osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR );
+    tex->setFilter( osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR );
+    attachedTextures.push_back( tex );
+    camera->attach( osg::Camera::COLOR_BUFFER, tex );
+
+    return camera.release();
+}
+
 void ImageViewerCaptureTool::initializeProperties(uint width, uint height, double fovY) {
     _viewer = new osgViewer::Viewer;
 
@@ -35,69 +64,26 @@ void ImageViewerCaptureTool::initializeProperties(uint width, uint height, doubl
     traits->readDISPLAY();
     osg::ref_ptr<osg::GraphicsContext> gfxc = osg::GraphicsContext::createGraphicsContext(traits.get());
 
-    // setup RTT texture
-    osg::Texture2D* rttTexture = new osg::Texture2D;
-    rttTexture->setTextureSize( width, height );
-    rttTexture->setInternalFormat( GL_RGBA32F_ARB );
-    rttTexture->setSourceFormat( GL_RGBA );
-    rttTexture->setSourceType( GL_FLOAT );
-    rttTexture->setResizeNonPowerOfTwoHint( false );
-    rttTexture->setFilter( osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR );
-    rttTexture->setFilter( osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR );
+    // setup MRT camera
+    std::vector<osg::Texture2D*> attachedTextures;
+    osg::Camera* mrtCamera ( _viewer->getCamera() );
+    setupMRTCamera(mrtCamera, attachedTextures, gfxc);
+    mrtCamera->setProjectionMatrixAsPerspective( osg::RadiansToDegrees( fovY ), ( width * 1.0 / height ), 0.1, 1000 );
 
-    // render camera to texture, with frame buffer
-    osg::Camera* rttCamera = _viewer->getCamera();
-    rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    rttCamera->setGraphicsContext( gfxc );
-    rttCamera->setDrawBuffer( GL_FRONT );
-    rttCamera->setReadBuffer( GL_FRONT );
-    rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
-    rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
-    rttCamera->setViewport( 0, 0, width, height );
-    rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-    rttCamera->setProjectionMatrixAsPerspective( osg::RadiansToDegrees( fovY ), ( width * 1.0 / height ), 0.1, 1000 );
-    rttCamera->attach( osg::Camera::COLOR_BUFFER, rttTexture );
-
-    // set RTT texture to quad
-    osg::Geode* geode( new osg::Geode );
-    geode->addDrawable( osg::createTexturedQuadGeometry(
-        osg::Vec3(-1,-1,0), osg::Vec3(2.0,0.0,0.0), osg::Vec3(0.0,2.0,0.0)) );
-    geode->getOrCreateStateSet()->setTextureAttributeAndModes( 0, rttTexture );
-    geode->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
-
-    // display the scene in post render camera
-    _postRenderCamera = new osg::Camera;
-    _postRenderCamera->setClearMask( 0 );
-    _postRenderCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER, osg::Camera::FRAME_BUFFER );
-    _postRenderCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF );
-    _postRenderCamera->setRenderOrder( osg::Camera::POST_RENDER );
-    _postRenderCamera->setViewMatrix( osg::Matrixd::identity() );
-    _postRenderCamera->addChild( geode );
-
-    // initialize the class to get the image in float data resolution
-    _capture = new WindowCaptureScreen( gfxc );
-    rttCamera->setFinalDrawCallback( _capture );
+    // setup the callback to collect buffer frames
+    _capture = new WindowCaptureScreen( gfxc, attachedTextures[0]);
+    mrtCamera->setFinalDrawCallback( _capture );
 }
 
 osg::ref_ptr<osg::Image> ImageViewerCaptureTool::grabImage(osg::ref_ptr<osg::Node> node) {
-    // setup the final OSG scene
-    osg::ref_ptr< osg::Group > root = new osg::Group;
-    root->addChild( _postRenderCamera );
-    root->addChild( node );
-
     // set the current root node
-    _viewer->setSceneData(root.get());
+    _viewer->setSceneData(node);
     _viewer->realize();
 
     // grab the current frame
     _viewer->frame();
     return _capture->captureImage();
 }
-
-osg::ref_ptr<osg::Image> ImageViewerCaptureTool::getDepthBuffer() {
-    return _capture->getDepthBuffer();
-}
-
 
 void ImageViewerCaptureTool::setCameraPosition( const osg::Vec3d& eye,
                                                 const osg::Vec3d& center,
@@ -121,26 +107,14 @@ void ImageViewerCaptureTool::setBackgroundColor(osg::Vec4d color) {
 ////WindowCaptureScreen METHODS
 ////////////////////////////////
 
-WindowCaptureScreen::WindowCaptureScreen(osg::ref_ptr<osg::GraphicsContext> gc) {
+WindowCaptureScreen::WindowCaptureScreen(osg::ref_ptr<osg::GraphicsContext> gfxc, osg::Texture2D* tex) {
     _mutex = new OpenThreads::Mutex();
     _condition = new OpenThreads::Condition();
     _image = new osg::Image();
-    _depth_buffer = new osg::Image();
 
     // checks the GraficContext from the camera viewer
-    if (gc->getTraits()) {
-        GLenum pixelFormat;
-        if (gc->getTraits()->alpha)
-            pixelFormat = GL_RGBA;
-        else
-            pixelFormat = GL_RGB;
-
-        int width = gc->getTraits()->width;
-        int height = gc->getTraits()->height;
-
-        // allocates the image memory space
-        _image->allocateImage(width, height, 1, pixelFormat, GL_FLOAT);
-        _depth_buffer->allocateImage(width, height, 1,  GL_DEPTH_COMPONENT, GL_FLOAT);
+    if (gfxc->getTraits()) {
+        _tex = tex;
     }
 }
 
@@ -155,16 +129,15 @@ osg::ref_ptr<osg::Image> WindowCaptureScreen::captureImage() {
     return _image;
 }
 
-osg::ref_ptr<osg::Image> WindowCaptureScreen::getDepthBuffer() {
-    return _depth_buffer;
-}
-
 void WindowCaptureScreen::operator ()(osg::RenderInfo& renderInfo) const {
-    osg::ref_ptr<osg::GraphicsContext> gc = renderInfo.getState()->getGraphicsContext();
-    if (gc->getTraits()) {
+    osg::ref_ptr<osg::GraphicsContext> gfxc = renderInfo.getState()->getGraphicsContext();
+
+    if (gfxc->getTraits()) {
         _mutex->lock();
-        _image->readPixels( 0, 0, _image->s(), _image->t(), _image->getPixelFormat(), GL_FLOAT);
-        _depth_buffer->readPixels(0, 0, _image->s(), _image->t(), _depth_buffer->getPixelFormat(), GL_FLOAT);
+
+        // read the color buffer
+        renderInfo.getState()->applyTextureAttribute(0, _tex);
+        _image->readImageFromCurrentTexture(renderInfo.getContextID(), true, GL_FLOAT);
 
         //grants the access to image
         _condition->signal();

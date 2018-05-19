@@ -21,8 +21,8 @@
 
 namespace normal_depth_map {
 
-#define SHADER_PATH_FRAG "normal_depth_map/shaders/normalDepthMap.frag"
-#define SHADER_PATH_VERT "normal_depth_map/shaders/normalDepthMap.vert"
+#define PASS1_VERT_PATH "normal_depth_map/shaders/pass1.vert"
+#define PASS1_FRAG_PATH "normal_depth_map/shaders/pass1.frag"
 
 NormalDepthMap::NormalDepthMap(float maxRange ) {
     _normalDepthMapNode = createTheNormalDepthMapShaderNode(maxRange);
@@ -118,24 +118,21 @@ osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
     osg::ref_ptr<osg::Group> localRoot = new osg::Group();
     osg::ref_ptr<osg::Program> program(new osg::Program());
 
-    osg::ref_ptr<osg::Shader> shaderVertex = osg::Shader::readShaderFile(
-                                              osg::Shader::VERTEX,
-                                              osgDB::findDataFile(
-                                                             SHADER_PATH_VERT));
+    osg::ref_ptr<osg::Shader> pass1vert = osg::Shader::readShaderFile(
+                                                osg::Shader::VERTEX,
+                                                osgDB::findDataFile(PASS1_VERT_PATH));
 
-    osg::ref_ptr<osg::Shader> shaderFragment = osg::Shader::readShaderFile(
-                                               osg::Shader::FRAGMENT,
-                                               osgDB::findDataFile(
-                                                             SHADER_PATH_FRAG));
-    program->addShader(shaderFragment);
-    program->addShader(shaderVertex);
+    osg::ref_ptr<osg::Shader> pass1frag = osg::Shader::readShaderFile(
+                                                osg::Shader::FRAGMENT,
+                                                osgDB::findDataFile(PASS1_FRAG_PATH));
+    program->addShader(pass1vert);
+    program->addShader(pass1frag);
 
     osg::ref_ptr<osg::StateSet> ss = localRoot->getOrCreateStateSet();
     ss->setAttribute(program);
 
     ss->addUniform(new osg::Uniform("farPlane", maxRange));
-    ss->addUniform(new osg::Uniform("attenuationCoeff",
-                                    attenuationCoefficient));
+    ss->addUniform(new osg::Uniform("attenuationCoeff", attenuationCoefficient));
     ss->addUniform(new osg::Uniform("drawNormal", drawNormal));
     ss->addUniform(new osg::Uniform("drawDepth", drawDepth));
 

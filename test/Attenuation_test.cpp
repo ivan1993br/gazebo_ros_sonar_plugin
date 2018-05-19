@@ -106,8 +106,8 @@ void getReferencePoints(std::vector<cv::Mat>& referencePoints) {
 BOOST_AUTO_TEST_CASE(attenuationDemo_testCase) {
     // sonar parameters
     float maxRange = 50;            // 50 meters
-    float fovX = M_PI / 6;    // 30 degrees
-    float fovY = M_PI / 6;    // 30 degrees
+    float fovX = M_PI / 6;          // 30 degrees
+    float fovY = M_PI / 6;          // 30 degrees
 
     // attenuation coefficient
     double frequency = 700.0;       // kHz

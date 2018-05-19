@@ -17,8 +17,6 @@ uniform bool useNormalTex;
 
 uniform sampler2D trianglesTex;
 
-out vec4 outData;
-
 // ray definition
 struct Ray {
     vec3 origin;
@@ -145,12 +143,12 @@ vec4 secondaryReflections(in vec4 primaryRefl) {
     vec3 intersectedPoint;
     ivec2 texSize = textureSize(trianglesTex, 0);
 
-    for (int idx = 0; idx < texSize.x; idx++) {
-        Triangle triangle = getTriangleData(idx);
-
-        // TODO: test triangle intersection
-        // hasIntersection = rayTriangleIntersection(ray, A, B, C, intersectedPoint);
-    }
+    // for (int idx = 0; idx < texSize.x; idx++) {
+    //     Triangle triangle = getTriangleData(idx);
+    //
+    //     // TODO: test triangle intersection
+    //     // hasIntersection = rayTriangleIntersection(ray, A, B, C, intersectedPoint);
+    // }
 
     vec4 output = vec4(0,0,0,0);
     return output;
@@ -164,5 +162,5 @@ void main() {
     vec4 secondaryRefl = secondaryReflections(primaryRefl);
 
     // TODO: outData = primary and secondary reflections
-    outData = primaryRefl;
+    gl_FragData[0] = primaryRefl;
 }

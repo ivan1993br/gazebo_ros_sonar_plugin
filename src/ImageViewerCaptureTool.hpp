@@ -2,6 +2,7 @@
 #define SIMULATION_NORMAL_DEPTH_MAP_SRC_IMAGECAPTURETOOL_HPP_
 
 #include <osgViewer/Viewer>
+#include <osg/Texture2D>
 
 namespace normal_depth_map {
 
@@ -21,7 +22,7 @@ public:
      *
      *  @param gc: it is a pointer to viewer GraphicsContext
      */
-    WindowCaptureScreen(osg::ref_ptr<osg::GraphicsContext> gc);
+    WindowCaptureScreen(osg::ref_ptr<osg::GraphicsContext> gfxc, osg::Texture2D* tex);
     ~WindowCaptureScreen();
 
     /**
@@ -32,7 +33,6 @@ public:
      *  @return osg::Image: it is return a image from the scene with defined camera and view parameters.
      */
     osg::ref_ptr<osg::Image> captureImage();
-    osg::ref_ptr<osg::Image> getDepthBuffer();
 
 private:
 
@@ -45,8 +45,8 @@ private:
 
     OpenThreads::Mutex *_mutex;
     OpenThreads::Condition *_condition;
-    osg::ref_ptr<osg::Image> _image;
-    osg::ref_ptr<osg::Image> _depth_buffer;
+    osg::Image* _image;
+    osg::ref_ptr<osg::Texture2D> _tex;
 };
 
 class ImageViewerCaptureTool {
@@ -82,13 +82,6 @@ public:
 
     osg::ref_ptr<osg::Image> grabImage(osg::ref_ptr<osg::Node> node);
 
-    /**
-     * @brief This function gets the image create by depth buffer
-     *
-     */
-
-    osg::ref_ptr<osg::Image> getDepthBuffer();
-
     void setCameraPosition( const osg::Vec3d& eye, const osg::Vec3d& center,
                             const osg::Vec3d& up);
     void getCameraPosition(osg::Vec3d& eye, osg::Vec3d& center, osg::Vec3d& up);
@@ -107,6 +100,7 @@ protected:
     osg::ref_ptr<WindowCaptureScreen> _capture;
     osg::ref_ptr<osgViewer::Viewer> _viewer;
     osg::ref_ptr<osg::Camera> _postRenderCamera;
+    osg::Camera* setupMRTCamera( osg::ref_ptr<osg::Camera> camera, std::vector<osg::Texture2D*>& attachedTextures, osg::ref_ptr<osg::GraphicsContext> gfxc);
 };
 
 } /* namespace normal_depth_map */
