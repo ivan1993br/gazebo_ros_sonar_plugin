@@ -18,11 +18,12 @@
 #include <iostream>
 #include <algorithm>
 
-
 namespace normal_depth_map {
 
 #define PASS1_VERT_PATH "normal_depth_map/shaders/pass1.vert"
 #define PASS1_FRAG_PATH "normal_depth_map/shaders/pass1.frag"
+#define PASS2_VERT_PATH "normal_depth_map/shaders/pass2.vert"
+#define PASS2_FRAG_PATH "normal_depth_map/shaders/pass2.frag"
 
 NormalDepthMap::NormalDepthMap(float maxRange ) {
     _normalDepthMapNode = createTheNormalDepthMapShaderNode(maxRange);
@@ -102,11 +103,11 @@ void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     std::sort( (*_visitor.triangles_data.triangles).begin(),
                (*_visitor.triangles_data.triangles).end());
 
-    osg::ref_ptr<osg::StateSet> ss = _normalDepthMapNode->getOrCreateStateSet();
+    osg::ref_ptr<osg::StateSet> pass2state = _normalDepthMapNode->getChild(1)->getOrCreateStateSet();
     osg::ref_ptr<osg::Texture2D> trianglesTexture;
     convertTrianglesToTextures(_visitor.triangles_data.triangles, trianglesTexture);
-    ss->addUniform(new osg::Uniform(osg::Uniform::SAMPLER_2D, "trianglesTex"));
-    ss->setTextureAttributeAndModes(0, trianglesTexture, osg::StateAttribute::ON);
+    pass2state->addUniform(new osg::Uniform(osg::Uniform::SAMPLER_2D, "trianglesTex"));
+    pass2state->setTextureAttributeAndModes(0, trianglesTexture, osg::StateAttribute::ON);
 }
 
 osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
@@ -116,25 +117,32 @@ osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
                                                 bool drawNormal) {
 
     osg::ref_ptr<osg::Group> localRoot = new osg::Group();
-    osg::ref_ptr<osg::Program> program(new osg::Program());
 
-    osg::ref_ptr<osg::Shader> pass1vert = osg::Shader::readShaderFile(
-                                                osg::Shader::VERTEX,
-                                                osgDB::findDataFile(PASS1_VERT_PATH));
+    // 1st pass: primary reflections by rasterization pipeline
+    osg::ref_ptr<osg::Group> pass1root = new osg::Group;
+    osg::ref_ptr<osg::Program> pass1prog = new osg::Program;
+    pass1prog->addShader(osg::Shader::readShaderFile(osg::Shader::VERTEX, osgDB::findDataFile(PASS1_VERT_PATH)));
+    pass1prog->addShader(osg::Shader::readShaderFile(osg::Shader::FRAGMENT, osgDB::findDataFile(PASS1_FRAG_PATH)));
 
-    osg::ref_ptr<osg::Shader> pass1frag = osg::Shader::readShaderFile(
-                                                osg::Shader::FRAGMENT,
-                                                osgDB::findDataFile(PASS1_FRAG_PATH));
-    program->addShader(pass1vert);
-    program->addShader(pass1frag);
+    osg::ref_ptr<osg::StateSet> pass1state = pass1root->getOrCreateStateSet();
+    pass1state->setAttributeAndModes( pass1prog, osg::StateAttribute::ON );
+    pass1state->addUniform(new osg::Uniform("farPlane", maxRange));
+    pass1state->addUniform(new osg::Uniform("attenuationCoeff", attenuationCoefficient));
+    pass1state->addUniform(new osg::Uniform("drawNormal", drawNormal));
+    pass1state->addUniform(new osg::Uniform("drawDepth", drawDepth));
 
-    osg::ref_ptr<osg::StateSet> ss = localRoot->getOrCreateStateSet();
-    ss->setAttribute(program);
+    // 2nd pass: secondary reflections by ray-triangle intersection
+    osg::ref_ptr<osg::Group> pass2root = new osg::Group;
+    osg::ref_ptr<osg::Program> pass2prog = new osg::Program;
+    pass2prog->addShader(osg::Shader::readShaderFile(osg::Shader::VERTEX, osgDB::findDataFile(PASS2_VERT_PATH)));
+    pass2prog->addShader(osg::Shader::readShaderFile(osg::Shader::FRAGMENT, osgDB::findDataFile(PASS2_FRAG_PATH)));
 
-    ss->addUniform(new osg::Uniform("farPlane", maxRange));
-    ss->addUniform(new osg::Uniform("attenuationCoeff", attenuationCoefficient));
-    ss->addUniform(new osg::Uniform("drawNormal", drawNormal));
-    ss->addUniform(new osg::Uniform("drawDepth", drawDepth));
+    osg::ref_ptr<osg::StateSet> pass2state = pass1root->getOrCreateStateSet();
+    pass2state->setAttributeAndModes( pass2prog, osg::StateAttribute::ON );
+
+    // set the main root
+    localRoot->addChild(pass1root);
+    localRoot->addChild(pass2root);
 
     return localRoot;
 }
