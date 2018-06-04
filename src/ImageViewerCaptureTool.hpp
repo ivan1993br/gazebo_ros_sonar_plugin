@@ -59,7 +59,7 @@ public:
      *  @param width: Width to generate the image
      *  @param height: height to generate the image
      */
-    ImageViewerCaptureTool(uint width = 640, uint height = 480);
+    ImageViewerCaptureTool(osg::ref_ptr<osg::Node> node, uint width = 640, uint height = 480);
 
     /**
      * @brief This constructor class generate a image according fovy, fovx and
@@ -70,7 +70,7 @@ public:
      *  @param height: height to generate the image
      */
 
-    ImageViewerCaptureTool( double fovY, double fovX, uint value,
+    ImageViewerCaptureTool( osg::ref_ptr<osg::Node> node, double fovY, double fovX, uint value,
                             bool isHeight = true);
 
     /**
@@ -80,7 +80,7 @@ public:
      *  @param node: node with the main scene
      */
 
-    osg::ref_ptr<osg::Image> grabImage(osg::ref_ptr<osg::Node> node);
+    osg::ref_ptr<osg::Image> grabImage();
 
     void setCameraPosition( const osg::Vec3d& eye, const osg::Vec3d& center,
                             const osg::Vec3d& up);
@@ -95,12 +95,14 @@ public:
 
 protected:
 
-    void initializeProperties(uint width, uint height, double fovY = (M_PI / 3));
+    void initializeProperties(osg::ref_ptr<osg::Node> node, uint width, uint height, double fovY = (M_PI / 3));
 
     osg::ref_ptr<WindowCaptureScreen> _capture;
     osg::ref_ptr<osgViewer::Viewer> _viewer;
-    osg::ref_ptr<osg::Camera> _postRenderCamera;
-    osg::Camera* setupMRTCamera( osg::ref_ptr<osg::Camera> camera, std::vector<osg::Texture2D*>& attachedTextures, osg::ref_ptr<osg::GraphicsContext> gfxc);
+
+    osg::Camera*    createRTTCamera( osg::Camera::BufferComponent buffer, osg::Texture2D* tex, osg::Camera* cam = new osg::Camera );
+    osg::Camera*    createHUDCamera(osg::Camera::BufferComponent buffer, osg::Texture2D* tex);
+    osg::Texture2D* createFloatTexture(uint w, uint h);
 };
 
 } /* namespace normal_depth_map */

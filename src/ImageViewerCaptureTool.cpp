@@ -4,12 +4,12 @@
 
 namespace normal_depth_map {
 
-ImageViewerCaptureTool::ImageViewerCaptureTool(uint width, uint height) {
+ImageViewerCaptureTool::ImageViewerCaptureTool(osg::ref_ptr<osg::Node> node, uint width, uint height) {
     // initialize the hide viewer;
-    initializeProperties(width, height);
+    initializeProperties(node, width, height);
 }
 
-ImageViewerCaptureTool::ImageViewerCaptureTool( double fovY, double fovX,
+ImageViewerCaptureTool::ImageViewerCaptureTool( osg::ref_ptr<osg::Node> node, double fovY, double fovX,
                                                 uint value, bool isHeight) {
     uint width, height;
 
@@ -21,41 +21,52 @@ ImageViewerCaptureTool::ImageViewerCaptureTool( double fovY, double fovX,
         height = width * tan(fovY * 0.5) / tan(fovX * 0.5);
     }
 
-    initializeProperties(width, height, fovY);
+    initializeProperties(node, width, height, fovY);
 }
 
-osg::Camera* ImageViewerCaptureTool::setupMRTCamera( osg::ref_ptr<osg::Camera> camera, std::vector<osg::Texture2D*>& attachedTextures, osg::ref_ptr<osg::GraphicsContext> gfxc ) {
-    uint w = gfxc->getTraits()->width;
-    uint h = gfxc->getTraits()->height;
-
-    // setup camera
+// create a RTT (render to texture) camera
+osg::Camera* ImageViewerCaptureTool::createRTTCamera( osg::Camera::BufferComponent buffer, osg::Texture2D* tex, osg::Camera* cam )
+{
+    osg::ref_ptr<osg::Camera> camera = cam;
     camera->setClearColor( osg::Vec4() );
-    camera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    camera->setGraphicsContext( gfxc );
-    camera->setDrawBuffer( GL_FRONT );
+    camera->setClearMask( GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT );
     camera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
-    camera->setRenderOrder( osg::Camera::PRE_RENDER, 0 );
-    camera->setViewport( 0, 0, w, h );
-    camera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-    camera->setViewMatrix( osg::Matrix::identity() );
-
-    // setup rendered texture
-    osg::Texture2D* tex = new osg::Texture2D;
-    tex->setTextureSize( w, h );
-    tex->setInternalFormat( GL_RGB32F );
-    tex->setSourceFormat( GL_RGBA );
-    tex->setSourceType( GL_FLOAT );
-    tex->setResizeNonPowerOfTwoHint( false );
-    tex->setFilter( osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR );
-    tex->setFilter( osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR );
-    attachedTextures.push_back( tex );
-    camera->attach( osg::Camera::COLOR_BUFFER, tex );
-
+    camera->setRenderOrder( osg::Camera::PRE_RENDER );
+    camera->setViewport( 0, 0, tex->getTextureWidth(), tex->getTextureHeight() );
+    camera->attach( buffer, tex );
     return camera.release();
 }
 
-void ImageViewerCaptureTool::initializeProperties(uint width, uint height, double fovY) {
+// create the post render camera
+osg::Camera* ImageViewerCaptureTool::createHUDCamera(osg::Camera::BufferComponent buffer, osg::Texture2D* tex)
+{
+    osg::ref_ptr<osg::Camera> camera = new osg::Camera;
+    camera->setClearMask(0);
+    camera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER, osg::Camera::FRAME_BUFFER );
+    camera->setReferenceFrame( osg::Camera::ABSOLUTE_RF );
+    camera->setRenderOrder( osg::Camera::POST_RENDER );
+    camera->setViewMatrix( osg::Matrixd::identity() );
+    camera->attach( buffer, tex );
+    return camera.release();
+}
+
+// create float textures to be rendered in FBO
+osg::Texture2D* ImageViewerCaptureTool::createFloatTexture(uint w, uint h)
+{
+    osg::ref_ptr<osg::Texture2D> tex2D = new osg::Texture2D;
+    tex2D->setTextureSize( w, h );
+    tex2D->setInternalFormat( GL_RGB32F_ARB );
+    tex2D->setSourceFormat( GL_RGBA );
+    tex2D->setSourceType( GL_FLOAT );
+    tex2D->setResizeNonPowerOfTwoHint( false );
+    tex2D->setFilter( osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR );
+    tex2D->setFilter( osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR );
+    return tex2D.release();
+}
+
+void ImageViewerCaptureTool::initializeProperties(osg::ref_ptr<osg::Node> node, uint width, uint height, double fovY) {
     _viewer = new osgViewer::Viewer;
+    _viewer->setSceneData(node);
 
     osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
     traits->width = width;
@@ -64,21 +75,26 @@ void ImageViewerCaptureTool::initializeProperties(uint width, uint height, doubl
     traits->readDISPLAY();
     osg::ref_ptr<osg::GraphicsContext> gfxc = osg::GraphicsContext::createGraphicsContext(traits.get());
 
-    // setup MRT camera
-    std::vector<osg::Texture2D*> attachedTextures;
-    osg::Camera* mrtCamera ( _viewer->getCamera() );
-    setupMRTCamera(mrtCamera, attachedTextures, gfxc);
-    mrtCamera->setProjectionMatrixAsPerspective( osg::RadiansToDegrees( fovY ), ( width * 1.0 / height ), 0.1, 1000 );
+    // first pass
+    osg::Texture2D* pass12tex = createFloatTexture(width, height);
+    osg::ref_ptr<osg::Camera> pass1camera = createRTTCamera(osg::Camera::COLOR_BUFFER0, pass12tex, _viewer->getCamera());
+    pass1camera->setGraphicsContext(gfxc);
+    pass1camera->setDrawBuffer( GL_FRONT );
+    pass1camera->setReadBuffer( GL_FRONT );
+    pass1camera->setProjectionMatrixAsPerspective( osg::RadiansToDegrees( fovY ), ( width * 1.0 / height ), 0.1, 1000 );
+    pass1camera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
+
+    // second pass
+
+    _viewer->realize();
 
     // setup the callback to collect buffer frames
-    _capture = new WindowCaptureScreen( gfxc, attachedTextures[0]);
-    mrtCamera->setFinalDrawCallback( _capture );
+    _capture = new WindowCaptureScreen(gfxc, pass12tex);
+    pass1camera->setFinalDrawCallback( _capture );
+
 }
 
-osg::ref_ptr<osg::Image> ImageViewerCaptureTool::grabImage(osg::ref_ptr<osg::Node> node) {
-    // set the current root node
-    _viewer->setSceneData(node);
-    _viewer->realize();
+osg::ref_ptr<osg::Image> ImageViewerCaptureTool::grabImage() {
 
     // grab the current frame
     _viewer->frame();
