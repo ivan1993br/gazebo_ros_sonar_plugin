@@ -119,25 +119,29 @@ osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
     osg::ref_ptr<osg::Group> localRoot = new osg::Group();
 
     // 1st pass: primary reflections by rasterization pipeline
-    osg::ref_ptr<osg::Group> pass1root = new osg::Group;
-    osg::ref_ptr<osg::Program> pass1prog = new osg::Program;
+    osg::ref_ptr<osg::Group> pass1root = new osg::Group();
+    osg::ref_ptr<osg::Program> pass1prog = new osg::Program();
+    osg::ref_ptr<osg::StateSet> pass1state = pass1root->getOrCreateStateSet();
     pass1prog->addShader(osg::Shader::readShaderFile(osg::Shader::VERTEX, osgDB::findDataFile(PASS1_VERT_PATH)));
     pass1prog->addShader(osg::Shader::readShaderFile(osg::Shader::FRAGMENT, osgDB::findDataFile(PASS1_FRAG_PATH)));
-
-    osg::ref_ptr<osg::StateSet> pass1state = pass1root->getOrCreateStateSet();
     pass1state->setAttributeAndModes( pass1prog, osg::StateAttribute::ON );
-    pass1state->addUniform(new osg::Uniform("farPlane", maxRange));
-    pass1state->addUniform(new osg::Uniform("attenuationCoeff", attenuationCoefficient));
-    pass1state->addUniform(new osg::Uniform("drawNormal", drawNormal));
-    pass1state->addUniform(new osg::Uniform("drawDepth", drawDepth));
+
+    // 1st pass: uniforms
+    pass1state->addUniform(new osg::Uniform(osg::Uniform::FLOAT, "farPlane"));
+    pass1state->addUniform(new osg::Uniform(osg::Uniform::FLOAT, "attenuationCoeff"));
+    pass1state->addUniform(new osg::Uniform(osg::Uniform::BOOL, "drawDepth"));
+    pass1state->addUniform(new osg::Uniform(osg::Uniform::BOOL, "drawNormal"));
+    pass1state->getUniform("farPlane")->set(maxRange);
+    pass1state->getUniform("attenuationCoeff")->set(attenuationCoefficient);
+    pass1state->getUniform("drawDepth")->set(drawDepth);
+    pass1state->getUniform("drawNormal")->set(drawNormal);
 
     // 2nd pass: secondary reflections by ray-triangle intersection
-    osg::ref_ptr<osg::Group> pass2root = new osg::Group;
-    osg::ref_ptr<osg::Program> pass2prog = new osg::Program;
+    osg::ref_ptr<osg::Group> pass2root = new osg::Group();
+    osg::ref_ptr<osg::Program> pass2prog = new osg::Program();
+    osg::ref_ptr<osg::StateSet> pass2state = pass2root->getOrCreateStateSet();
     pass2prog->addShader(osg::Shader::readShaderFile(osg::Shader::VERTEX, osgDB::findDataFile(PASS2_VERT_PATH)));
     pass2prog->addShader(osg::Shader::readShaderFile(osg::Shader::FRAGMENT, osgDB::findDataFile(PASS2_FRAG_PATH)));
-
-    osg::ref_ptr<osg::StateSet> pass2state = pass1root->getOrCreateStateSet();
     pass2state->setAttributeAndModes( pass2prog, osg::StateAttribute::ON );
 
     // set the main root

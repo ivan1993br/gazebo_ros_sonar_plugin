@@ -9,7 +9,7 @@ namespace normal_depth_map {
 /**
  * @brief Capture the osg::Image from a node scene without show the render window
  *
- *  Makes the osg::image from the osg::node scene without to show a GUI.
+ *  Makes the osg::image from the osg::group scene without to show a GUI.
  */
 
 class WindowCaptureScreen: public osg::Camera::DrawCallback {
@@ -59,7 +59,9 @@ public:
      *  @param width: Width to generate the image
      *  @param height: height to generate the image
      */
-    ImageViewerCaptureTool(osg::ref_ptr<osg::Node> node, uint width = 640, uint height = 480);
+    ImageViewerCaptureTool( osg::ref_ptr<osg::Group> node,
+                            uint width = 640,
+                            uint height = 480);
 
     /**
      * @brief This constructor class generate a image according fovy, fovx and
@@ -70,20 +72,23 @@ public:
      *  @param height: height to generate the image
      */
 
-    ImageViewerCaptureTool( osg::ref_ptr<osg::Node> node, double fovY, double fovX, uint value,
+    ImageViewerCaptureTool( osg::ref_ptr<osg::Group> node,
+                            double fovY,
+                            double fovX,
+                            uint value,
                             bool isHeight = true);
 
     /**
      * @brief This function gets the main node scene and generate a image with
      * float values
      *
-     *  @param node: node with the main scene
+     * @return osg::Image: the rendered image from main node.
      */
-
     osg::ref_ptr<osg::Image> grabImage();
 
     void setCameraPosition( const osg::Vec3d& eye, const osg::Vec3d& center,
                             const osg::Vec3d& up);
+
     void getCameraPosition(osg::Vec3d& eye, osg::Vec3d& center, osg::Vec3d& up);
     void setBackgroundColor(osg::Vec4d color);
 
@@ -95,14 +100,24 @@ public:
 
 protected:
 
-    void initializeProperties(osg::ref_ptr<osg::Node> node, uint width, uint height, double fovY = (M_PI / 3));
+    void setupViewer(  osg::ref_ptr<osg::Group> node,
+                                uint width,
+                                uint height,
+                                double fovY = (M_PI / 3));
 
     osg::ref_ptr<WindowCaptureScreen> _capture;
     osg::ref_ptr<osgViewer::Viewer> _viewer;
 
-    osg::Camera*    createRTTCamera( osg::Camera::BufferComponent buffer, osg::Texture2D* tex, osg::Camera* cam = new osg::Camera );
-    osg::Camera*    createHUDCamera(osg::Camera::BufferComponent buffer, osg::Texture2D* tex);
-    osg::Texture2D* createFloatTexture(uint w, uint h);
+    osg::Texture2D* createFloatTexture( uint width, uint height );
+
+    osg::Camera* createRTTCamera(   osg::Camera::BufferComponent buffer,
+                                    osg::Texture2D* tex,
+                                    osg::GraphicsContext *gfxc );
+
+    osg::Camera* createHUDCamera(   double left, double right,
+                                    double bottom, double top);
+
+    osg::Geode* createScreenQuad( float width, float height, float scale = 1.0f );
 };
 
 } /* namespace normal_depth_map */
