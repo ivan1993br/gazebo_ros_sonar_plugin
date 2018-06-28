@@ -47,3 +47,8 @@ rock_testsuite(Multipass2_core Multipass2_test.cpp TestHelper.cpp
     DEPS normal_depth_map
     LIBS ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
     DEPS_PKGCONFIG openscenegraph opencv)
+
+rock_testsuite(KDTree_core KDTree_test.cpp TestHelper.cpp
+    DEPS normal_depth_map
+    LIBS ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
+    DEPS_PKGCONFIG openscenegraph opencv)
