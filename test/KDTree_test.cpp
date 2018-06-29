@@ -18,36 +18,50 @@ BOOST_AUTO_TEST_SUITE(test_KDTree)
 // node of k-d tree
 struct KDnode
 {
-    osg::Vec3f v0, v1, v2;
-    osg::Vec3f midpoint;
-    osg::Vec3f normal;
+    std::vector<osg::Vec3> data;
     KDnode *left, *right;
 
-    KDnode(osg::Vec3f k)
-        : midpoint(k) {
-            left = NULL;
-            right = NULL;
-        }
+    KDnode()
+        : data(5, osg::Vec3(0,0,0))
+        , left(NULL)
+        , right(NULL) {};
 
-    KDnode( osg::Vec3f a, osg::Vec3f b, osg::Vec3f c, osg::Vec3f k, osg::Vec3f n)
-        : v0(a), v1(b), v2(c), midpoint(k), normal(n) {
-            left = NULL;
-            right = NULL;
-        }
+    KDnode(osg::Vec3 k)
+        : data(5, osg::Vec3(0,0,0))
+        , left(NULL)
+        , right(NULL) {
+            data[3] = k;
+        };
+
+    KDnode(osg::Vec3 v1, osg::Vec3 v2, osg::Vec3 v3)
+        : data(5, osg::Vec3(0,0,0))
+        , left(NULL)
+        , right(NULL) {
+        setTriangle(v1, v2, v3);
+    };
+
+    void setTriangle(osg::Vec3 v1, osg::Vec3 v2, osg::Vec3 v3) {
+        data[0] = v1;                                  // vertex 1
+        data[1] = v2;                                  // vertex 2
+        data[2] = v3;                                  // vertex 3
+        data[3] = (v1 + v2 + v3) / 3;                  // centroid
+        data[4] = (v2 - v1).operator ^(v3 - v1);
+        data[4].normalize();                           // normal of triangle's plane
+    };
 };
 
 // Calculate the distance between two points
 inline double dist(KDnode *a, KDnode *b)
 {
-    return ((a->midpoint - b->midpoint).length2());
+    return ((a->data[3] - b->data[3]).length2());
 }
 
 // Switch the values of node A and B
 inline void swap(KDnode *a, KDnode *b)
 {
-    osg::Vec3f tmp = a->midpoint;
-    a->midpoint = b->midpoint;
-    b->midpoint = tmp;
+    std::vector<osg::Vec3> tmp = a->data;
+    a->data = b->data;
+    b->data = tmp;
 }
 
 // Find the median value of binary tree
@@ -62,12 +76,12 @@ KDnode *findMedian(KDnode *start, KDnode *end, int idx)
     double pivot;
     while (1)
     {
-        pivot = md->midpoint[idx];
+        pivot = md->data[3][idx];
 
         swap(md, end - 1);
         for (store = p = start; p < end; p++)
         {
-            if (p->midpoint[idx] < pivot)
+            if (p->data[3][idx] < pivot)
             {
                 if (p != store)
                     swap(p, store);
@@ -77,7 +91,7 @@ KDnode *findMedian(KDnode *start, KDnode *end, int idx)
         swap(store, end - 1);
 
         // Median has duplicate values */
-        if (store->midpoint[idx] == md->midpoint[idx])
+        if (store->data[3][idx] == md->data[3][idx])
             return md;
 
         if (store > md)
@@ -113,7 +127,7 @@ void nearest(KDnode *root, KDnode *nd, int i, int dim, KDnode **best, double *be
         return;
     d = dist(root, nd);
 
-    dx = root->midpoint[i] - nd->midpoint[i];
+    dx = root->data[3][i] - nd->data[3][i];
     dx2 = dx * dx;
 
     (*visited)++;
@@ -193,7 +207,7 @@ void printTree(KDnode *root, Trunk *prev, bool isLeft)
     }
 
     showTrunks(trunk);
-    std::cout << "(" << root->midpoint.x() << "," << root->midpoint.y() << "," << root->midpoint.z() << ") " << std::endl;
+    std::cout << "(" << root->data[3].x() << "," << root->data[3].y() << "," << root->data[3].z() << ") " << std::endl;
 
     if (prev)
         prev->str = prev_str;
@@ -229,8 +243,9 @@ void printVerticalLine(KDnode *node, int line_no, int hd)
         return;
 
     // If this node is on the given line number
-    if (hd == line_no)
-        std::cout << "(" << node->midpoint.x() << "," << node->midpoint.y() << "," << node->midpoint.z() << ") ";
+    if (hd == line_no) {
+        std::cout << "(" << node->data[3].x() << "," << node->data[3].y() << "," << node->data[3].z() << ") ";
+    }
 
     // Recur for left and right subtrees
     printVerticalLine(node->left, line_no, hd - 1);
@@ -238,7 +253,7 @@ void printVerticalLine(KDnode *node, int line_no, int hd)
 }
 
 // The main function that prints a given binary tree in vertical order
-void verticalOrder(KDnode *root)
+void printVerticalOrder(KDnode *root)
 {
     // Find min and max distances with respect to root
     int min = 0, max = 0;
@@ -253,25 +268,57 @@ void verticalOrder(KDnode *root)
     }
 }
 
+void getVerticalNodes(KDnode *node, std::vector<float>& vec, int line_no, int hd)
+{
+    // Base case
+    if (node == NULL)
+        return;
+
+    // If this node is on the given line number
+    if (hd == line_no) {
+        for (int i = 0; i < node->data.size(); i++) {
+            for (int j = 0; j < 3; j++) {
+                vec.push_back(node->data[i][j]);
+            }
+        }
+    }
+
+    // Recur for left and right subtrees
+    getVerticalNodes(node->left, vec, line_no, hd - 1);
+    getVerticalNodes(node->right, vec, line_no, hd + 1);
+}
+
+void kdtree2vector(KDnode *root, std::vector<float>& vec) {
+    // Find min and max distanes with respect to root
+    int min = 0, max = 0;
+    findMinMax(root, &min, &max, 0);
+
+    // Iterate through all possible vertical lines starting
+    // from the leftmost line and print nodes line by line
+    for (int line_no = min; line_no <= max; line_no++) {
+        getVerticalNodes(root, vec, line_no, 0);
+    }
+}
+
 #define N 1000000
 #define rand1() (rand() / (double)RAND_MAX)
-#define rand_pt(v)                                       \
-{                                                    \
-    v.midpoint = osg::Vec3f(rand1(), rand1(), rand1()); \
+#define rand_pt(v)                                      \
+{                                                       \
+    v = KDnode(osg::Vec3(rand1(), rand1(), rand1()));   \
 }
 
 BOOST_AUTO_TEST_CASE(KDTree_2d)
 {
     KDnode wp[] = {
-        KDnode(osg::Vec3f(2, 3, 0)),
-        KDnode(osg::Vec3f(5, 4, 0)),
-        KDnode(osg::Vec3f(9, 6, 0)),
-        KDnode(osg::Vec3f(1, 9, 0)),
-        KDnode(osg::Vec3f(3, 3, 0)),
-        KDnode(osg::Vec3f(8, 1, 0)),
-        KDnode(osg::Vec3f(7, 2, 0))};
+        KDnode(osg::Vec3(2, 3, 0)),
+        KDnode(osg::Vec3(5, 4, 0)),
+        KDnode(osg::Vec3(9, 6, 0)),
+        KDnode(osg::Vec3(1, 9, 0)),
+        KDnode(osg::Vec3(3, 3, 0)),
+        KDnode(osg::Vec3(8, 1, 0)),
+        KDnode(osg::Vec3(7, 2, 0))};
 
-    KDnode testNode(osg::Vec3f(9, 2, 0));
+    KDnode testNode(osg::Vec3(9, 2, 0));
     KDnode *root, *found;
     double best_dist;
 
@@ -283,20 +330,24 @@ BOOST_AUTO_TEST_CASE(KDTree_2d)
 
     printf(">> WP tree\nsearching for (%g, %g)\n"
            "found (%g, %g) dist %g\nseen %d nodes\n\n",
-           testNode.midpoint.x(), testNode.midpoint.y(),
-           found->midpoint.x(), found->midpoint.y(), sqrt(best_dist), visited);
+           testNode.data[3].x(), testNode.data[3].y(),
+           found->data[3].x(), found->data[3].y(), sqrt(best_dist), visited);
 
     std::cout << ">> Number of nodes: " << countNodes(root) << std::endl;
 
     printTree(root, NULL, false);
 
     std::cout << "\n>> Vertical order traversal is " << std::endl;
-    verticalOrder(root);
+    printVerticalOrder(root);
+
+    std::vector<float> vec;
+    kdtree2vector(root, vec);
+    std::cout << "\n>> Size of vec: " << vec.size() << std::endl;
 }
 
 BOOST_AUTO_TEST_CASE(KDTree_3d)
 {
-    KDnode testNode(osg::Vec3f(9, 2, 0));
+    KDnode testNode;
     KDnode *root, *found, *million;
     double best_dist;
 
@@ -305,17 +356,19 @@ BOOST_AUTO_TEST_CASE(KDTree_3d)
     for (int i = 0; i < N; i++)
         rand_pt(million[i]);
 
+    std::cout << "Building tree..." << std::endl;
     root = makeTree(million, N, 0, 3);
     rand_pt(testNode);
 
+    std::cout << "Searching nearest node..." << std::endl;
     int visited = 0;
     found = 0;
     nearest(root, &testNode, 0, 3, &found, &best_dist, &visited);
 
     printf("\n>> Million tree\nsearching for (%g, %g, %g)\n"
            "found (%g, %g, %g) dist %g\nseen %d nodes\n",
-           testNode.midpoint.x(), testNode.midpoint.y(), testNode.midpoint.z(),
-           found->midpoint.x(), found->midpoint.y(), found->midpoint.z(),
+           testNode.data[3].x(), testNode.data[3].y(), testNode.data[3].z(),
+           found->data[3].x(), found->data[3].y(), found->data[3].z(),
            sqrt(best_dist), visited);
 
     /* search many random points in million tree to see average behavior.
@@ -358,7 +411,7 @@ BOOST_AUTO_TEST_CASE(KDtree_benchmarking)
 
     clock_t begin = clock();
     KDnode *found;
-    KDnode testNode(osg::Vec3f(9, 2, 0));
+    KDnode testNode(osg::Vec3(9, 2, 0));
     double best_dist;
     int visited = 0;
     for (int i = 0; i < test_runs; i++)

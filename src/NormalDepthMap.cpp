@@ -98,14 +98,19 @@ bool NormalDepthMap::isDrawDepth() {
 void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     _normalDepthMapNode->addChild(node);
 
-    // pass the triangles data to GLSL as uniform
+    // collect all triangles of scene
     _normalDepthMapNode->accept(_visitor);
-    std::sort( (*_visitor.triangles_data.triangles).begin(),
-               (*_visitor.triangles_data.triangles).end());
 
-    osg::ref_ptr<osg::StateSet> pass2state = _normalDepthMapNode->getChild(1)->getOrCreateStateSet();
+    // TODO: store all triangles in a balanced kd-tree ( makeTree() )
+    // TODO: organize the triangles (nodes) of the balanced kd-tree in vertical order
+    // TODO:
+
+    // convert triangles to texture
     osg::ref_ptr<osg::Texture2D> trianglesTexture;
     convertTrianglesToTextures(_visitor.triangles_data.triangles, trianglesTexture);
+
+    // pass the triangles data to GLSL as uniform
+    osg::ref_ptr<osg::StateSet> pass2state = _normalDepthMapNode->getChild(1)->getOrCreateStateSet();
     pass2state->addUniform(new osg::Uniform(osg::Uniform::SAMPLER_2D, "trianglesTex"));
     pass2state->setTextureAttributeAndModes(0, trianglesTexture, osg::StateAttribute::ON);
 }

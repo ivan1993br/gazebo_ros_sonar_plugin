@@ -13,169 +13,214 @@
 
 namespace normal_depth_map {
 
-  /**
-   * @brief compute Underwater Signal Attenuation coefficient
-   *
-   *  This method is based on paper "A simplified formula for viscous and
-   *  chemical absorption in sea water". The method computes the attenuation
-   *  coefficient that will be used on shader normal intensite return.
-   *
-   *  @param double frequency: sound frequency in kHz.
-   *  @param double temperature: water temperature in Celsius degrees.
-   *  @param double depth: distance from water surface in meters.
-   *  @param double salinity: amount of salt dissolved in a body of water in ppt.
-   *  @param double acidity: pH water value.
-   *
-   *  @return double coefficient attenuation value
-   */
+    /**
+     * @brief compute Underwater Signal Attenuation coefficient
+     *
+     *  This method is based on paper "A simplified formula for viscous and
+     *  chemical absorption in sea water". The method computes the attenuation
+     *  coefficient that will be used on shader normal intensite return.
+     *
+     *  @param double frequency: sound frequency in kHz.
+     *  @param double temperature: water temperature in Celsius degrees.
+     *  @param double depth: distance from water surface in meters.
+     *  @param double salinity: amount of salt dissolved in a body of water in ppt.
+     *  @param double acidity: pH water value.
+     *
+     *  @return double coefficient attenuation value
+     */
 
-  double underwaterSignalAttenuation( const double frequency,
-                                      const double temperature,
-                                      const double depth,
-                                      const double salinity,
-                                      const double acidity);
+    double underwaterSignalAttenuation( const double frequency,
+                                        const double temperature,
+                                        const double depth,
+                                        const double salinity,
+                                        const double acidity);
 
-/**
-* @brief
-*
-*/
-template < typename T >
-void setOSGImagePixel(osg::ref_ptr<osg::Image>& image,
-  unsigned int x,
-  unsigned int y,
-  unsigned int channel,
-  T value ){
+    /**
+     * @brief
+     *
+     */
+    struct TriangleStruct {
+        std::vector< osg::Vec3 > data;
+        TriangleStruct *left, *right;
 
-    bool valid = ( y < (unsigned int) image->s() )
-    && ( x < (unsigned int) image->t() )
-    && ( channel < (unsigned int) image->r() );
+        TriangleStruct()
+            : data(5, osg::Vec3(0,0,0))
+            , left(NULL)
+            , right(NULL){};
 
-    if( !valid )
-    return;
+        TriangleStruct(osg::Vec3 v1, osg::Vec3 v2, osg::Vec3 v3)
+            : data(5, osg::Vec3(0,0,0))
+            , left(NULL)
+            , right(NULL) {
 
-    uint step = (x*image->s() + y) * image->r() + channel;
+            setTriangle(v1, v2, v3);
+        };
 
-    T* data = (T*) image->data();
-    data = data + step;
-    *data = value;
-  }
+        void setTriangle(osg::Vec3 v1, osg::Vec3 v2, osg::Vec3 v3){
+            data[0] = v1;                                  // vertex 1
+            data[1] = v2;                                  // vertex 2
+            data[2] = v3;                                  // vertex 3
+            data[3] = (v1 + v2 + v3) / 3;                  // centroid
+            data[4] = (v2 - v1).operator ^(v3 - v1);       // normal of triangle's plane
+            data[4].normalize();
+        };
 
-/**
- * @brief
- *
- */
-struct TriangleStruct {
-    std::vector< osg::Vec3 > _data;
-
-    TriangleStruct()
-      : _data(5, osg::Vec3(0,0,0)) {};
-
-    TriangleStruct(osg::Vec3 v_1, osg::Vec3 v_2, osg::Vec3 v_3)
-      : _data(5, osg::Vec3(0,0,0)) {
-
-        setTriangle(v_1, v_2, v_3);
+        std::vector<float> getAllDataAsVector(){
+            std::vector<float> output( data.size() * 3, 0.0);
+            for (unsigned int i = 0; i < output.size(); i++)
+                output[i] = data[i/3][i%3];
+            return output;
+        }
     };
 
-    void setTriangle(osg::Vec3 v_1, osg::Vec3 v_2, osg::Vec3 v_3){
+    /**
+     * @brief
+     *
+     */
+    struct TrianglesCollection{
 
-        _data[0] = v_1;
-        _data[1] = v_2;
-        _data[2] = v_3;
-        _data[3] = (v_1 + v_2 + v_3) / 3; // centroid
+        std::vector<TriangleStruct>* triangles;
+        osg::Matrix local_2_world;
 
-        osg::Vec3 v1_v2 = v_2 - v_1;
-        osg::Vec3 v1_v3 = v_3 - v_1;
-        _data[4] = v1_v2.operator ^(v1_v3);
-        _data[4].normalize(); // normal
+        TrianglesCollection() {
+            triangles = new std::vector<TriangleStruct>();
+        };
+
+        ~TrianglesCollection() {
+            delete triangles;
+        };
+
+        inline void operator ()(const osg::Vec3& v1,
+                                const osg::Vec3& v2,
+                                const osg::Vec3& v3,
+                                bool treatVertexDataAsTemporary) {
+
+            // transform vertice coordinates to world coordinates
+            osg::Vec3 v1_w = v1 * local_2_world;
+            osg::Vec3 v2_w = v2 * local_2_world;
+            osg::Vec3 v3_w = v3 * local_2_world;
+            triangles->push_back( TriangleStruct(v1_w, v2_w, v3_w) );
+        };
     };
 
-    std::vector<float> getAllDataAsVector(){
-        std::vector<float> output( _data.size()*3, 0.0);
-        for (unsigned int i = 0; i < output.size(); i++)
-            output[i] = _data[i/3][i%3];
-        return output;
+    /**
+     * @brief Switch the values of triangles A and B
+     *
+     * @param TriangleStruct *a: the first triangle
+     * @param TriangleStruct *b: the second triangle
+     *
+     */
+    inline void swap(TriangleStruct *a, TriangleStruct *b)
+    {
+        std::vector<osg::Vec3> tmp = a->data;
+        a->data = b->data;
+        b->data = tmp;
     }
 
-    bool operator < (const TriangleStruct& obj_1){
-        return _data[3] < obj_1._data[3];
+    /**
+     * @brief Find the median value of a K-d tree
+     *
+     * @param TriangleStruct *start: xxxxxxxxxx
+     * @param TriangleStruct *end: xxxxxxxxxx
+     * @param int idx: xxxxxxxxxx
+     *
+     */
+    TriangleStruct *findMedian(TriangleStruct *start, TriangleStruct *end, int idx);
+
+    /**
+     * @brief Build the K-d tree
+     *
+     */
+    TriangleStruct *makeTree(TriangleStruct *t, int len, int i, int dim);
+
+    /**
+     * @brief A utility function to find min and max distances with respect to root.
+     *
+     */
+    void findMinMax(TriangleStruct *node, int *min, int *max, int hd);
+
+    /**
+     * @brief
+     *
+     */
+    void verticalLine(TriangleStruct *node, std::vector<TriangleStruct>& vec, int line_no, int hd);
+
+    /**
+     * @brief
+     *
+     */
+    void verticalOrder(TriangleStruct *root, std::vector<TriangleStruct>& vec);
+
+    /**
+     * @brief
+     *
+     */
+    class TrianglesVisitor : public osg::NodeVisitor {
+    public:
+
+        osg::TriangleFunctor<TrianglesCollection> triangles_data;
+
+        TrianglesVisitor();
+        void apply( osg::Geode& geode );
+    };
+
+    /**
+     * @brief
+     *
+     */
+    void convertTrianglesToTextures(
+                    std::vector<TriangleStruct>* triangles,
+                    osg::ref_ptr<osg::Texture2D>& texture);
+
     }
-};
 
-/**
- * @brief
- *
- */
-struct TrianglesCollection{
+    /**
+    * @brief
+    *
+    */
+    template < typename T >
+    void setOSGImagePixel(  osg::ref_ptr<osg::Image>& image,
+                            unsigned int x,
+                            unsigned int y,
+                            unsigned int channel,
+                            T value ) {
 
-    std::vector<TriangleStruct>* triangles;
-    osg::Matrix local_2_world;
+        bool valid =    ( y < (unsigned int) image->s() )
+                        && ( x < (unsigned int) image->t() )
+                        && ( channel < (unsigned int) image->r() );
 
-    TrianglesCollection() {
-        triangles = new std::vector<TriangleStruct>();
-    };
+        if( !valid )
+            return;
 
-    ~TrianglesCollection() {
-        delete triangles;
-    };
+        uint step = (x*image->s() + y) * image->r() + channel;
 
-    inline void operator () (const osg::Vec3& v1,
-                             const osg::Vec3& v2,
-                             const osg::Vec3& v3,
-                             bool treatVertexDataAsTemporary) {
+        T* data = (T*) image->data();
+        data = data + step;
+        *data = value;
+    }
 
-        // transform vertice coordinates to world coordinates
-        osg::Vec3 v1_w = v1 * local_2_world;
-        osg::Vec3 v2_w = v2 * local_2_world;
-        osg::Vec3 v3_w = v3 * local_2_world;
-        triangles->push_back( TriangleStruct(v1_w, v2_w, v3_w) );
-    };
-};
+    /**
+     * @brief
+     *
+     */
+    template<typename T>
+    void vec2osgimg( std::vector<T> const& vec, osg::ref_ptr<osg::Image>& image) {
+        image = new osg::Image;
+        image->allocateImage(vec.size(), 1, 3, GL_RGB, GL_FLOAT);
+        image->setInternalTextureFormat(GL_RGB32F_ARB);
 
-/**
- * @brief
- *
- */
-class TrianglesVisitor : public osg::NodeVisitor {
-public:
+        float* data = (float*)image->data(0);
+        memcpy(data, &vec[0], vec.size() * sizeof(T));
+    }
 
-    osg::TriangleFunctor<TrianglesCollection> triangles_data;
-
-    TrianglesVisitor();
-    void apply( osg::Geode& geode );
-};
-
-/**
- * @brief
- *
- */
-void convertTrianglesToTextures(
-                  std::vector<TriangleStruct>* triangles,
-                  osg::ref_ptr<osg::Texture2D>& texture);
-
-}
-
-/**
- * @brief
- *
- */
-template<typename T>
-void vec2osgimg( std::vector<T> const& vec, osg::ref_ptr<osg::Image>& image) {
-    image = new osg::Image;
-    image->allocateImage(vec.size(), 1, 3, GL_RGB, GL_FLOAT);
-    image->setInternalTextureFormat(GL_RGB32F_ARB);
-
-    float* data = (float*)image->data(0);
-    memcpy(data, &vec[0], vec.size() * sizeof(T));
-}
-
-/**
- * @brief
- *
- */
-template<typename T>
-void osgimg2vec( osg::ref_ptr<osg::Image> const& image, std::vector<T>& vec) {
-    T* data = (T*) image->data();
-    vec = std::vector<T>(data, data + image->s());
-}
+    /**
+     * @brief
+     *
+     */
+    template<typename T>
+    void osgimg2vec( osg::ref_ptr<osg::Image> const& image, std::vector<T>& vec) {
+        T* data = (T*) image->data();
+        vec = std::vector<T>(data, data + image->s());
+    }
 
 #endif

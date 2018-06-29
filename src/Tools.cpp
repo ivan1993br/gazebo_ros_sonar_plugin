@@ -77,5 +77,103 @@ void convertTrianglesToTextures(
     texture->setImage(image);
 }
 
+// Find the median value of binary tree
+TriangleStruct *findMedian(TriangleStruct *start, TriangleStruct *end, int idx)
+{
+    if (end <= start)
+        return NULL;
+    if (end == start + 1)
+        return start;
+
+    TriangleStruct *p, *store, *md = start + (end - start) / 2;
+    double pivot;
+    while (1)
+    {
+        pivot = md->data[3][idx];
+
+        swap(md, end - 1);
+        for (store = p = start; p < end; p++)
+        {
+            if (p->data[3][idx] < pivot)
+            {
+                if (p != store)
+                    swap(p, store);
+                store++;
+            }
+        }
+        swap(store, end - 1);
+
+        // Median has duplicate values
+        if (store->data[3][idx] == md->data[3][idx])
+            return md;
+
+        if (store > md)
+            end = store;
+        else
+            start = store;
+    }
+}
+
+// Build the k-d tree
+TriangleStruct *makeTree(TriangleStruct *t, int len, int i, int dim)
+{
+    TriangleStruct *n;
+
+    if (!len)
+        return 0;
+
+    if ((n = findMedian(t, t + len, i)))
+    {
+        i = (i + 1) % dim;
+        n->left = makeTree(t, n - t, i, dim);
+        n->right = makeTree(n + 1, t + len - (n + 1), i, dim);
+    }
+    return n;
+}
+
+// A utility function to find min and max distances with respect to root.
+void findMinMax(TriangleStruct *node, int *min, int *max, int hd)
+{
+    // Base case
+    if (node == NULL)
+        return;
+
+    // Update min and max
+    if (hd < *min)
+        *min = hd;
+    else if (hd > *max)
+        *max = hd;
+
+    // Recur for left and right subtrees
+    findMinMax(node->left, min, max, hd - 1);
+    findMinMax(node->right, min, max, hd + 1);
+}
+
+void verticalLine(TriangleStruct *node, std::vector<TriangleStruct>& vec, int line_no, int hd)
+{
+    // Base case
+    if (node == NULL)
+        return;
+
+    // If this node is on the given line number
+    if (hd == line_no)
+        vec.push_back(*node);
+
+    // Recur for left and right subtrees
+    verticalLine(node->left, vec, line_no, hd - 1);
+    verticalLine(node->right, vec, line_no, hd + 1);
+}
+
+void verticalOrder(TriangleStruct *root, std::vector<TriangleStruct>& vec) {
+    // Find min and max distanes with respect to root
+    int min = 0, max = 0;
+    findMinMax(root, &min, &max, 0);
+
+    // Iterate through all possible vertical lines starting
+    // from the leftmost line and print nodes line by line
+    for (int line_no = min; line_no <= max; line_no++) {
+        verticalLine(root, vec, line_no, 0);
+    }
+}
 
 }
