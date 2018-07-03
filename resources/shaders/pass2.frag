@@ -1,10 +1,9 @@
 #version 130
 
-in vec3 directionEyeSpace;
-in vec3 reflectedDir;
-
-uniform sampler2D trianglesTex;
-uniform sampler2D pass12tex;
+uniform sampler2D trianglesTex;     // all triangles/meshes collected from the simulated scene
+uniform sampler2D firstReflectionTex;     // first reflections by rasterization
+uniform sampler2D originTex;        // incident vector of reflected surface
+uniform sampler2D directionTex;     // direction vector of reflected surface
 uniform vec2 textureSize;
 
 // ray definition
@@ -77,10 +76,10 @@ bool rayTriangleIntersection (Ray ray, vec3 a, vec3 b, vec3 c, out vec3 intersec
 }
 
 // secondary reflections: ray-triangle intersection
-vec4 secondaryReflections(vec4 primaryRefl) {
+vec4 secondaryReflections(vec4 primaryRefl, vec4 origin, vec4 direction) {
     Ray ray;
-    ray.origin = directionEyeSpace;
-    ray.direction = reflectedDir;
+    // ray.origin = directionEyeSpace;
+    // ray.direction = reflectedDir;
 
     // test ray-triangle intersection only for pixels with valid normal values
     // from primary reflections
@@ -122,10 +121,14 @@ vec4 secondaryReflections(vec4 primaryRefl) {
 
 void main() {
     // primary reflections by rasterization
-    vec4 primaryRefl = texture2D(pass12tex, gl_FragCoord.xy / textureSize);
+    vec4 primaryRefl = texture2D(firstReflectionTex, gl_FragCoord.xy / textureSize);
+
+    // origin/incident and direction vectors of reflected surfaces
+    vec4 origin = texture2D(originTex, gl_FragCoord.xy / textureSize);
+    vec4 direction = texture2D(directionTex, gl_FragCoord.xy / textureSize);
 
     // secondary reflections by ray-tracing
-    vec4 secondaryRefl = secondaryReflections(primaryRefl);
+    vec4 secondaryRefl = secondaryReflections(primaryRefl, origin, direction);
 
     // TODO: outData = primary and secondary reflections
     gl_FragData[0] = primaryRefl;

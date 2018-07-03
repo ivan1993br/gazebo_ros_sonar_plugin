@@ -3,6 +3,8 @@
 in vec3 positionEyeSpace;
 in vec3 normalEyeSpace;
 in mat3 TBN;
+in vec3 directionEyeSpace;
+in vec3 reflectedDir;
 
 uniform float farPlane;
 uniform bool drawNormal;
@@ -43,7 +45,7 @@ vec4 primaryReflections() {
     // Attenuation effect of sound in the water
     nNormalEyeSpace = nNormalEyeSpace * exp(-2 * attenuationCoeff * linearDepth);
 
-    // output the normal and depth data as matrix
+    // presents the normal and depth data as matrix
     vec4 output = vec4(0, 0, 0, 1);
     if (linearDepth <= 1) {
         if (drawNormal) output.z = abs(dot(nPositionEyeSpace, nNormalEyeSpace));
@@ -53,6 +55,12 @@ vec4 primaryReflections() {
 }
 
 void main() {
-    // output the primary reflections as texture
+    // output: primary reflections by rasterization
     gl_FragData[0] = primaryReflections();
+
+    // output: incident vector (origin) of reflected surfaces
+    gl_FragData[1] = vec4(directionEyeSpace, 1);
+
+    // output: direction vector of reflected surfaces
+    gl_FragData[2] = vec4(reflectedDir, 1);
 }

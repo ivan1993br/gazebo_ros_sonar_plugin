@@ -114,6 +114,11 @@ protected:
                                     osg::Texture2D* tex,
                                     osg::GraphicsContext *gfxc );
 
+    osg::Camera* createRTTCamera(   osg::Texture2D *tex0,
+                                    osg::Texture2D *tex1,
+                                    osg::Texture2D *tex2,
+                                    osg::GraphicsContext *gfxc);
+
     osg::Camera* createHUDCamera(   double left, double right,
                                     double bottom, double top);
 
