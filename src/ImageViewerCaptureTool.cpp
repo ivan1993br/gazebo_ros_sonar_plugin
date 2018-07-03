@@ -120,8 +120,8 @@ void ImageViewerCaptureTool::setupViewer(osg::ref_ptr<osg::Group> node, uint wid
     osg::ref_ptr<osg::StateSet> pass2state = pass2cam->getOrCreateStateSet();
     pass2state->addUniform(new osg::Uniform("pass12tex", 1));
     pass2state->setTextureAttributeAndModes(1, pass12tex, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-    pass2state->addUniform(new osg::Uniform(osg::Uniform::FLOAT_VEC2, "resolution"));
-    pass2state->getUniform("resolution")->set(osg::Vec2(width * 1.0, height * 1.0));
+    pass2state->addUniform(new osg::Uniform(osg::Uniform::FLOAT_VEC2, "textureSize"));
+    pass2state->getUniform("textureSize")->set(osg::Vec2(width * 1.0, height * 1.0));
     pass2root->addChild(pass2cam);
 
     // setup post render camera
