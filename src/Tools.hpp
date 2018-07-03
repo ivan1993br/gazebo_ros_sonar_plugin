@@ -1,8 +1,10 @@
 #ifndef SIMULATION_NORMAL_DEPTH_MAP_SRC_TOOLS_HPP_
 #define SIMULATION_NORMAL_DEPTH_MAP_SRC_TOOLS_HPP_
 
-
+// C++ includes
 #include <vector>
+
+// OSG includes
 #include <osg/Node>
 #include <osg/Geode>
 #include <osg/ref_ptr>
@@ -78,17 +80,8 @@ namespace normal_depth_map {
      *
      */
     struct TrianglesCollection{
-
-        std::vector<TriangleStruct>* triangles;
+        std::vector<TriangleStruct> triangles;
         osg::Matrix local_2_world;
-
-        TrianglesCollection() {
-            triangles = new std::vector<TriangleStruct>();
-        };
-
-        ~TrianglesCollection() {
-            delete triangles;
-        };
 
         inline void operator ()(const osg::Vec3& v1,
                                 const osg::Vec3& v2,
@@ -99,15 +92,12 @@ namespace normal_depth_map {
             osg::Vec3 v1_w = v1 * local_2_world;
             osg::Vec3 v2_w = v2 * local_2_world;
             osg::Vec3 v3_w = v3 * local_2_world;
-            triangles->push_back( TriangleStruct(v1_w, v2_w, v3_w) );
+            triangles.push_back(TriangleStruct(v1_w, v2_w, v3_w));
         };
     };
 
     /**
-     * @brief Switch the values of triangles A and B
-     *
-     * @param TriangleStruct *a: the first triangle
-     * @param TriangleStruct *b: the second triangle
+     * @brief
      *
      */
     inline void swap(TriangleStruct *a, TriangleStruct *b)
@@ -118,23 +108,19 @@ namespace normal_depth_map {
     }
 
     /**
-     * @brief Find the median value of a K-d tree
-     *
-     * @param TriangleStruct *start: xxxxxxxxxx
-     * @param TriangleStruct *end: xxxxxxxxxx
-     * @param int idx: xxxxxxxxxx
+     * @brief
      *
      */
     TriangleStruct *findMedian(TriangleStruct *start, TriangleStruct *end, int idx);
 
     /**
-     * @brief Build the K-d tree
+     * @brief
      *
      */
-    TriangleStruct *makeTree(TriangleStruct *t, int len, int i, int dim);
+    TriangleStruct *makeTree(TriangleStruct *t, int len, int idx, int dim);
 
     /**
-     * @brief A utility function to find min and max distances with respect to root.
+     * @brief
      *
      */
     void findMinMax(TriangleStruct *node, int *min, int *max, int hd);
@@ -169,7 +155,7 @@ namespace normal_depth_map {
      *
      */
     void convertTrianglesToTextures(
-                    std::vector<TriangleStruct>* triangles,
+                    std::vector<TriangleStruct> triangles,
                     osg::ref_ptr<osg::Texture2D>& texture);
 
     }
@@ -185,7 +171,7 @@ namespace normal_depth_map {
                             unsigned int channel,
                             T value ) {
 
-        bool valid =    ( y < (unsigned int) image->s() )
+        bool valid = ( y < (unsigned int) image->s() )
                         && ( x < (unsigned int) image->t() )
                         && ( channel < (unsigned int) image->r() );
 

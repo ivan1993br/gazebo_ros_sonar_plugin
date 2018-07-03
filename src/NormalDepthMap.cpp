@@ -101,13 +101,16 @@ void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     // collect all triangles of scene
     _normalDepthMapNode->accept(_visitor);
 
-    // TODO: store all triangles in a balanced kd-tree ( makeTree() )
-    // TODO: organize the triangles (nodes) of the balanced kd-tree in vertical order
-    // TODO:
+    // store all triangles as a balanced kd-tree
+    TriangleStruct* tree = makeTree(&_visitor.triangles_data.triangles[0], _visitor.triangles_data.triangles.size(), 0, 3);
+
+    // organize the triangles (nodes) of balanced kd-tree in vertical order
+    std::vector<TriangleStruct> triangles;
+    verticalOrder(tree, triangles);
 
     // convert triangles to texture
     osg::ref_ptr<osg::Texture2D> trianglesTexture;
-    convertTrianglesToTextures(_visitor.triangles_data.triangles, trianglesTexture);
+    convertTrianglesToTextures(triangles, trianglesTexture);
 
     // pass the triangles data to GLSL as uniform
     osg::ref_ptr<osg::StateSet> pass2state = _normalDepthMapNode->getChild(1)->getOrCreateStateSet();

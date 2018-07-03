@@ -53,19 +53,19 @@ void TrianglesVisitor::apply( osg::Geode& geode ) {
 
 
 void convertTrianglesToTextures(
-                      std::vector<TriangleStruct>* triangles,
+                      std::vector<TriangleStruct> triangles,
                       osg::ref_ptr<osg::Texture2D>& texture){
 
     osg::ref_ptr<osg::Image> image = new osg::Image();
-    image->allocateImage( triangles->size(),
-                          (*triangles)[0].getAllDataAsVector().size(),
+    image->allocateImage( triangles.size(),
+                          triangles[0].getAllDataAsVector().size(),
                           1,
                           GL_RED,
                           GL_FLOAT);
     image->setInternalTextureFormat(GL_R32F);
 
-    for (unsigned int j = 0; j < triangles->size(); j++){
-        std::vector<float> data = (*triangles)[j].getAllDataAsVector();
+    for (unsigned int j = 0; j < triangles.size(); j++){
+        std::vector<float> data = triangles[j].getAllDataAsVector();
         for (unsigned int i = 0; i < data.size(); i++)
             setOSGImagePixel(image, i, j, 0, data[i]);
     }
@@ -115,18 +115,18 @@ TriangleStruct *findMedian(TriangleStruct *start, TriangleStruct *end, int idx)
 }
 
 // Build the k-d tree
-TriangleStruct *makeTree(TriangleStruct *t, int len, int i, int dim)
+TriangleStruct *makeTree(TriangleStruct *t, int len, int idx, int dim)
 {
     TriangleStruct *n;
 
     if (!len)
         return 0;
 
-    if ((n = findMedian(t, t + len, i)))
+    if ((n = findMedian(t, t + len, idx)))
     {
-        i = (i + 1) % dim;
-        n->left = makeTree(t, n - t, i, dim);
-        n->right = makeTree(n + 1, t + len - (n + 1), i, dim);
+        idx = (idx + 1) % dim;
+        n->left = makeTree(t, n - t, idx, dim);
+        n->right = makeTree(n + 1, t + len - (n + 1), idx, dim);
     }
     return n;
 }
