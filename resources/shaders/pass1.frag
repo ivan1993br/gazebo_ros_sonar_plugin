@@ -39,11 +39,13 @@ vec4 primaryReflections() {
     float linearDepth = sqrt(positionEyeSpace.x * positionEyeSpace.x +
                              positionEyeSpace.y * positionEyeSpace.y +
                              positionEyeSpace.z * positionEyeSpace.z);
-    linearDepth = linearDepth / farPlane;
-    gl_FragDepth = linearDepth;
 
     // Attenuation effect of sound in the water
     nNormalEyeSpace = nNormalEyeSpace * exp(-2 * attenuationCoeff * linearDepth);
+
+    // Normalize depth using range value (farPlane)
+    linearDepth = linearDepth / farPlane;
+    gl_FragDepth = linearDepth;
 
     // presents the normal and depth data as matrix
     vec4 output = vec4(0, 0, 0, 1);
