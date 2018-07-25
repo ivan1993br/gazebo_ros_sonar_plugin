@@ -5,6 +5,8 @@
 #include <ctime>
 #include <iostream>
 #include <string>
+#include <queue>
+#include <stack>
 
 // OSG includes
 #include <osg/Geode>
@@ -53,7 +55,10 @@ struct KDnode
 // Calculate the distance between two points
 inline double dist(KDnode *a, KDnode *b)
 {
-    return ((a->data[3] - b->data[3]).length2());
+    osg::Vec3 c = a->data[3] - b->data[3];
+    return (c.x() * c.x()
+            + c.y() * c.y()
+            + c.z() * c.z());
 }
 
 // Switch the values of node A and B
@@ -69,7 +74,7 @@ KDnode *findMedian(KDnode *start, KDnode *end, int idx)
 {
     if (end <= start)
         return NULL;
-    if (end == start + 1)
+    if (end == (start + 1))
         return start;
 
     KDnode *p, *store, *md = start + (end - start) / 2;
@@ -118,17 +123,17 @@ KDnode *makeTree(KDnode *t, int len, int i, int dim)
     return n;
 }
 
-// Calculate the nearest node for a specific value
-void nearest(KDnode *root, KDnode *nd, int i, int dim, KDnode **best, double *best_dist, int *visited)
+// Calculate the nearest node for a specific value (using node)
+void nearest1(KDnode *root, KDnode *nd, int i, int dim, KDnode **best, double *best_dist, int *visited)
 {
-    double d, dx, dx2;
-
     if (!root)
         return;
-    d = dist(root, nd);
 
-    dx = root->data[3][i] - nd->data[3][i];
-    dx2 = dx * dx;
+    double d = dist(root, nd);
+    double dx = root->data[3][i] - nd->data[3][i];
+    double dx2 = dx * dx;
+
+    std::cout << "\nVisited: (" << root->data[3].x() << "," << root->data[3].y() << "," << root->data[3].z() << ") " << std::endl;
 
     (*visited)++;
 
@@ -142,13 +147,207 @@ void nearest(KDnode *root, KDnode *nd, int i, int dim, KDnode **best, double *be
     if (!*best_dist)
         return;
 
-    if (++i >= dim)
-        i = 0;
+    i = ++i % dim;
 
-    nearest(dx > 0 ? root->left : root->right, nd, i, dim, best, best_dist, visited);
-    if (dx2 >= *best_dist)
+    std::cout << "d  = " << d << std::endl;
+    std::cout << "dx = " << dx << std::endl;
+    std::cout << "dx2 = " << dx2 << std::endl;
+    std::cout << "best dist = " << *best_dist << std::endl;
+
+    nearest1(dx > 0 ? root->left : root->right, nd, i, dim, best, best_dist, visited);
+
+    if (dx2 < *best_dist) {
+        std::cout << "dx2 < best_dist" << std::endl;
+        nearest1(dx > 0 ? root->right : root->left, nd, i, dim, best, best_dist, visited);
+    }
+}
+
+// Calculate the nearest node for a specific value (using vector)
+void nearest2(const std::vector<float>& vec, KDnode *nd, int idx, int i, int dim, KDnode **best, double *best_dist, int *visited)
+{
+    if (idx > (vec.size() - 1))
         return;
-    nearest(dx > 0 ? root->right : root->left, nd, i, dim, best, best_dist, visited);
+
+    KDnode *root = new KDnode(osg::Vec3(vec[idx + 9], vec[idx + 10], vec[idx + 11]));
+
+    double d = dist(root, nd);
+    double dx = root->data[3][i] - nd->data[3][i];
+
+    (*visited)++;
+
+    if (!*best || d < *best_dist)
+    {
+        *best_dist = d;
+        *best = root;
+    }
+
+    // If chance of exact match is high
+    if (!*best_dist)
+        return;
+
+    i = ++i % dim;
+
+    int idx_left = 2 * idx + 15;
+    int idx_right = 2 * idx + 30;
+
+    nearest2(vec, nd, dx > 0 ? idx_left : idx_right, i, dim, best, best_dist, visited);
+
+    double dx2 = dx * dx;
+    if (dx2 < *best_dist)
+        nearest2(vec, nd, dx > 0 ? idx_right : idx_left, i, dim, best, best_dist, visited);
+}
+
+// Calculate the nearest node for a specific value (using vector by iterative way)
+void nearest3(const std::vector<float> &vec, KDnode *nd, int dim, KDnode **best, double *best_dist, int *visited)
+{
+    KDnode *root = new KDnode();
+
+    std::queue<int> stack;
+    stack.push(0);
+    int i = 0;
+
+    while (!stack.empty()) {
+        int idx = stack.front();
+        stack.pop();
+
+        if (idx > (vec.size() - 1))
+            continue;
+
+        root->data[3].set(vec[idx + 9], vec[idx + 10], vec[idx + 11]);
+
+        double d = dist(root, nd);
+        double dx = root->data[3][i] - nd->data[3][i];
+        double dx2 = dx * dx;
+
+        (*visited)++;
+
+        if (!*best || d < *best_dist)
+        {
+            *best_dist = d;
+            *best = root;
+        }
+
+        // If chance of exact match is high
+        if (!*best_dist)
+            return;
+
+        i = ++i % dim;
+
+        int idx_left = 2 * idx + 15;
+        int idx_right = 2 * idx + 30;
+
+        stack.push(dx > 0 ? idx_left : idx_right);
+    }
+}
+
+// A structure to represent a queue
+struct Queue
+{
+    int front, rear, size;
+    unsigned capacity;
+    int *array;
+};
+
+// function to create a queue of given capacity. It initializes size of
+// queue as 0
+Queue *createQueue(unsigned capacity)
+{
+    Queue *queue = (Queue *)malloc(sizeof(Queue));
+    queue->capacity = capacity;
+    queue->front = queue->size = 0;
+    queue->rear = capacity - 1; // This is important, see the enqueue
+    queue->array = (int *)malloc(queue->capacity * sizeof(int));
+    return queue;
+}
+
+// Queue is full when size becomes equal to the capacity
+int isFull(Queue *queue)
+{
+    return (queue->size == queue->capacity);
+}
+
+// Queue is empty when size is 0
+int isEmpty(Queue *queue)
+{
+    return (queue->size == 0);
+}
+
+// Function to add an item to the queue.  It changes rear and size
+void enqueue(Queue *queue, int item)
+{
+    if (isFull(queue))
+        return;
+    queue->rear = (queue->rear + 1) % queue->capacity;
+    queue->array[queue->rear] = item;
+    queue->size = queue->size + 1;
+}
+
+// Function to remove an item from queue.  It changes front and size
+int dequeue(Queue *queue)
+{
+    if (isEmpty(queue))
+        return INT_MIN;
+    int item = queue->array[queue->front];
+    queue->front = (queue->front + 1) % queue->capacity;
+    queue->size = queue->size - 1;
+    return item;
+}
+
+// Function to get front of queue
+int front(Queue *queue)
+{
+    if (isEmpty(queue))
+        return INT_MIN;
+    return queue->array[queue->front];
+}
+
+// Function to get rear of queue
+int rear(Queue *queue)
+{
+    if (isEmpty(queue))
+        return INT_MIN;
+    return queue->array[queue->rear];
+}
+
+void nearest4(const std::vector<float> &vec, KDnode *nd, int dim, KDnode **best, double *best_dist, int *visited)
+{
+    KDnode *root = new KDnode();
+
+    Queue *queue = createQueue(1024);
+    enqueue(queue, 0);
+    int i = 0;
+
+    while (!isEmpty(queue))
+    {
+        int idx = dequeue(queue);
+
+        if (idx > (vec.size() - 1))
+            continue;
+
+        root->data[3].set(vec[idx + 9], vec[idx + 10], vec[idx + 11]);
+
+        double d = dist(root, nd);
+        double dx = root->data[3][i] - nd->data[3][i];
+
+        (*visited)++;
+
+        if (!*best || d < *best_dist)
+        {
+            *best_dist = d;
+            *best = root;
+        }
+
+        // If chance of exact match is high
+        if (!*best_dist)
+            return;
+
+        i = ++i % dim;
+
+        int idx_left = 2 * idx + 15;
+        int idx_right = 2 * idx + 30;
+
+        enqueue(queue, (dx > 0 ? idx_left : idx_right));
+    }
 }
 
 // Count the number of nodes of binary tree
@@ -288,16 +487,75 @@ void getVerticalNodes(KDnode *node, std::vector<float>& vec, int line_no, int hd
     getVerticalNodes(node->right, vec, line_no, hd + 1);
 }
 
-void kdtree2vector(KDnode *root, std::vector<float>& vec) {
-    // Find min and max distanes with respect to root
-    int min = 0, max = 0;
-    findMinMax(root, &min, &max, 0);
+// Compute the "maxDepth" of a tree -- the number of nodes along
+// the longest path from the root node down to the farthest leaf node.
+int height(KDnode *node)
+{
+    if (node == NULL)
+        return 0;
+    else
+    {
+        /* compute the depth of each subtree */
+        int lDepth = height(node->left);
+        int rDepth = height(node->right);
 
-    // Iterate through all possible vertical lines starting
-    // from the leftmost line and print nodes line by line
-    for (int line_no = min; line_no <= max; line_no++) {
-        getVerticalNodes(root, vec, line_no, 0);
+        /* use the larger one */
+        if (lDepth > rDepth)
+            return (lDepth + 1);
+        else
+            return (rDepth + 1);
     }
+}
+
+// Print nodes at a given level
+void printGivenLevel(KDnode *root, int level)
+{
+    if (root == NULL)
+        return;
+    if (level == 1)
+        std::cout << "(" << root->data[3].x() << "," << root->data[3].y() << "," << root->data[3].z() << ") ";
+    else if (level > 1)
+    {
+        printGivenLevel(root->left, level - 1);
+        printGivenLevel(root->right, level - 1);
+    }
+}
+
+// Function to print level order traversal a tree
+void printLevelOrder(KDnode *node)
+{
+    int h = height(node);
+    for (int i = 1; i <= h; i++)
+        printGivenLevel(node, i);
+}
+
+// Print nodes at a given level
+void getGivenLevel(KDnode *root, std::vector<float>& vec, int level)
+{
+    if (root == NULL)
+        return;
+
+    if (level == 1) {
+        for (int i = 0; i < root->data.size(); i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                vec.push_back(root->data[i][j]);
+            }
+        }
+    } else if (level > 1)
+    {
+        getGivenLevel(root->left, vec, level - 1);
+        getGivenLevel(root->right, vec, level - 1);
+    }
+}
+
+void kdtree2vector(KDnode *root, std::vector<float> &vec)
+{
+    int h = height(root);
+
+    for (int i = 1; i <= h; i++)
+        getGivenLevel(root, vec, i);
 }
 
 #define N 1000000
@@ -309,40 +567,50 @@ void kdtree2vector(KDnode *root, std::vector<float>& vec) {
 
 BOOST_AUTO_TEST_CASE(KDTree_2d)
 {
-    KDnode wp[] = {
-        KDnode(osg::Vec3(2, 3, 0)),
-        KDnode(osg::Vec3(5, 4, 0)),
-        KDnode(osg::Vec3(9, 6, 0)),
-        KDnode(osg::Vec3(1, 9, 0)),
-        KDnode(osg::Vec3(3, 3, 0)),
-        KDnode(osg::Vec3(8, 1, 0)),
-        KDnode(osg::Vec3(7, 2, 0))};
+    std::vector<KDnode> wp;
+    wp.push_back(KDnode(osg::Vec3(2, 3, 0)));
+    wp.push_back(KDnode(osg::Vec3(5, 4, 0)));
+    wp.push_back(KDnode(osg::Vec3(9, 6, 0)));
+    wp.push_back(KDnode(osg::Vec3(1, 9, 0)));
+    wp.push_back(KDnode(osg::Vec3(3, 3, 0)));
+    wp.push_back(KDnode(osg::Vec3(8, 1, 0)));
+    wp.push_back(KDnode(osg::Vec3(7, 2, 0)));
 
     KDnode testNode(osg::Vec3(9, 2, 0));
     KDnode *root, *found;
     double best_dist;
 
-    root = makeTree(wp, sizeof(wp) / sizeof(KDnode), 0, 2);
-
-    int visited = 0;
-    found = 0;
-    nearest(root, &testNode, 0, 2, &found, &best_dist, &visited);
-
-    printf(">> WP tree\nsearching for (%g, %g)\n"
-           "found (%g, %g) dist %g\nseen %d nodes\n\n",
-           testNode.data[3].x(), testNode.data[3].y(),
-           found->data[3].x(), found->data[3].y(), sqrt(best_dist), visited);
+    root = makeTree(&wp[0], wp.size(), 0, 2);
 
     std::cout << ">> Number of nodes: " << countNodes(root) << std::endl;
+
+    std::cout << "\n>> Height of tree: " << height(root) << std::endl;
 
     printTree(root, NULL, false);
 
     std::cout << "\n>> Vertical order traversal is " << std::endl;
     printVerticalOrder(root);
 
+    std::cout << "\n>> Level order traversal is " << std::endl;
+    printLevelOrder(root);
+
     std::vector<float> vec;
     kdtree2vector(root, vec);
-    std::cout << "\n>> Size of vec: " << vec.size() << std::endl;
+    std::cout << "\n\n>> Size of vec: " << vec.size() << std::endl;
+
+    int visited = 0;
+    found = 0;
+    // nearest1(root, &testNode, 0, 2, &found, &best_dist, &visited);
+    // nearest2(vec, &testNode, 0, 0, 2, &found, &best_dist, &visited);
+    // nearest3(vec, &testNode, 2, &found, &best_dist, &visited);
+    nearest4(vec, &testNode, 2, &found, &best_dist, &visited);
+
+    printf("\n>> WP tree\nsearching for (%g, %g)\n"
+           "found (%g, %g) dist %g\nseen %d nodes\n\n",
+           testNode.data[3].x(), testNode.data[3].y(),
+           found->data[3].x(), found->data[3].y(), sqrt(best_dist), visited);
+
+    std::cout << "================================================================\n\n" << std::endl;
 }
 
 BOOST_AUTO_TEST_CASE(KDTree_3d)
@@ -363,7 +631,14 @@ BOOST_AUTO_TEST_CASE(KDTree_3d)
     std::cout << "Searching nearest node..." << std::endl;
     int visited = 0;
     found = 0;
-    nearest(root, &testNode, 0, 3, &found, &best_dist, &visited);
+
+    std::vector<float> vec;
+    kdtree2vector(root, vec);
+
+    // nearest1(root, &testNode, 0, 3, &found, &best_dist, &visited);
+    // nearest2(vec, &testNode, 0, 0, 3, &found, &best_dist, &visited);
+    // nearest3(vec, &testNode, 3, &found, &best_dist, &visited);
+    nearest4(vec, &testNode, 4, &found, &best_dist, &visited);
 
     printf("\n>> Million tree\nsearching for (%g, %g, %g)\n"
            "found (%g, %g, %g) dist %g\nseen %d nodes\n",
@@ -386,43 +661,89 @@ BOOST_AUTO_TEST_CASE(KDTree_3d)
         found = 0;
         visited = 0;
         rand_pt(testNode);
-        nearest(root, &testNode, 0, 3, &found, &best_dist, &visited);
+        // nearest1(root, &testNode, 0, 3, &found, &best_dist, &visited);
+        // nearest2(vec, &testNode, 0, 0, 3, &found, &best_dist, &visited);
+        // nearest3(vec, &testNode, 3, &found, &best_dist, &visited);
+        nearest4(vec, &testNode, 3, &found, &best_dist, &visited);
         sum += visited;
     }
     printf("\n>> Million tree\n"
            "visited %d nodes for %d random findings (%f per lookup)\n",
            sum, test_runs, sum / (double)test_runs);
 
+    // std::cout << "\n>> Height of tree: " << height(root) << std::endl;
+
     free(million);
 }
 
-BOOST_AUTO_TEST_CASE(KDtree_benchmarking)
-{
-    /* benchmarking test */
-    int test_runs = 800 * 600; // 800 * 600 px
-    int triangles = 10000;     // number of triangles
+// BOOST_AUTO_TEST_CASE(KDtree_benchmarking)
+// {
+//     /* benchmarking test */
+//     int test_runs = 800 * 600; // 800 * 600 px
+//     int triangles = 10000;     // number of triangles
 
-    KDnode *million = (KDnode *)calloc(triangles, sizeof(KDnode));
-    srand(time(0));
-    for (int i = 0; i < triangles; i++)
-        rand_pt(million[i]);
+//     KDnode *million = (KDnode *)calloc(triangles, sizeof(KDnode));
+//     srand(time(0));
+//     for (int i = 0; i < triangles; i++)
+//         rand_pt(million[i]);
 
-    KDnode *root = makeTree(million, triangles, 0, 3);
+//     KDnode *root = makeTree(million, triangles, 0, 3);
 
-    clock_t begin = clock();
-    KDnode *found;
-    KDnode testNode(osg::Vec3(9, 2, 0));
-    double best_dist;
-    int visited = 0;
-    for (int i = 0; i < test_runs; i++)
-    {
-        found = 0;
-        rand_pt(testNode);
-        nearest(root, &testNode, 0, 3, &found, &best_dist, &visited);
-    }
-    clock_t end = clock();
-    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    std::cout << "\n>> Elapsed time: " << elapsed_secs << std::endl;
-}
+//     clock_t begin = clock();
+//     KDnode *found;
+//     KDnode testNode(osg::Vec3(9, 2, 0));
+//     double best_dist;
+//     int visited = 0;
+//     for (int i = 0; i < test_runs; i++)
+//     {
+//         found = 0;
+//         rand_pt(testNode);
+//         nearest(root, &testNode, 0, 3, &found, &best_dist, &visited);
+//     }
+//     clock_t end = clock();
+//     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+//     std::cout << "\n>> Elapsed time: " << elapsed_secs << std::endl;
+// }
+
+// int random(int n, int m)
+// {
+//     return rand() % (m - n + 1) + n;
+// }
+
+// BOOST_AUTO_TEST_CASE(KDtree_vector_search)
+// {
+//     std::vector<KDnode> wp;
+//     for (int i = 0; i < 15; i++) {
+//         osg::Vec3 point(random(-10, 10), random(-10, 10), random(-10, 10));
+//         wp.push_back(point);
+//     }
+
+//     // KDnode testNode(osg::Vec3(9, 2, 0));
+//     KDnode *root, *found;
+//     double best_dist;
+
+//     root = makeTree(&wp[0], wp.size(), 0, 3);
+
+//     // int visited = 0;
+//     // found = 0;
+//     // nearest(root, &testNode, 0, 2, &found, &best_dist, &visited);
+
+//     // printf(">> WP tree\nsearching for (%g, %g)\n"
+//     //        "found (%g, %g) dist %g\nseen %d nodes\n\n",
+//     //        testNode.data[3].x(), testNode.data[3].y(),
+//     //        found->data[3].x(), found->data[3].y(), sqrt(best_dist), visited);
+
+//     // std::cout << ">> Number of nodes: " << countNodes(root) << std::endl;
+
+//     printTree(root, NULL, false);
+
+//     std::cout << "\n>> Vertical order traversal is " << std::endl;
+//     printVerticalOrder(root);
+
+//     std::vector<float> vec;
+//     kdtree2vector(root, vec);
+//     std::cout << "\n>> Size of vec: " << vec.size() << std::endl;
+
+// }
 
 BOOST_AUTO_TEST_SUITE_END();
