@@ -106,7 +106,7 @@ void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
 
     // organize the triangles (nodes) of balanced kd-tree in vertical order
     std::vector<TriangleStruct> triangles;
-    verticalOrder(tree, triangles);
+    levelOrder(tree, triangles);
 
     // convert triangles to texture
     osg::ref_ptr<osg::Texture2D> trianglesTexture;

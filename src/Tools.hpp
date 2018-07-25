@@ -123,19 +123,19 @@ namespace normal_depth_map {
      * @brief
      *
      */
-    void findMinMax(TriangleStruct *node, int *min, int *max, int hd);
+    int height(TriangleStruct *node);
 
     /**
      * @brief
      *
      */
-    void verticalLine(TriangleStruct *node, std::vector<TriangleStruct>& vec, int line_no, int hd);
+    void getGivenLevel(TriangleStruct *node, std::vector<TriangleStruct> &vec, int level);
 
     /**
      * @brief
      *
      */
-    void verticalOrder(TriangleStruct *root, std::vector<TriangleStruct>& vec);
+    void levelOrder(TriangleStruct *node, std::vector<TriangleStruct>& vec);
 
     /**
      * @brief

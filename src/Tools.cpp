@@ -131,49 +131,46 @@ TriangleStruct *makeTree(TriangleStruct *t, int len, int idx, int dim)
     return n;
 }
 
-// A utility function to find min and max distances with respect to root.
-void findMinMax(TriangleStruct *node, int *min, int *max, int hd)
+// Compute the "maxDepth" of a tree -- the number of nodes along
+// the longest path from the root node down to the farthest leaf node.
+int height(TriangleStruct *node)
 {
-    // Base case
     if (node == NULL)
-        return;
+        return 0;
+    else
+    {
+        /* compute the depth of each subtree */
+        int lDepth = height(node->left);
+        int rDepth = height(node->right);
 
-    // Update min and max
-    if (hd < *min)
-        *min = hd;
-    else if (hd > *max)
-        *max = hd;
-
-    // Recur for left and right subtrees
-    findMinMax(node->left, min, max, hd - 1);
-    findMinMax(node->right, min, max, hd + 1);
+        /* use the larger one */
+        if (lDepth > rDepth)
+            return (lDepth + 1);
+        else
+            return (rDepth + 1);
+    }
 }
 
-void verticalLine(TriangleStruct *node, std::vector<TriangleStruct>& vec, int line_no, int hd)
+// Get nodes at a given level
+void getGivenLevel(TriangleStruct *node, std::vector<TriangleStruct> &vec, int level)
 {
-    // Base case
     if (node == NULL)
         return;
 
-    // If this node is on the given line number
-    if (hd == line_no)
+    if (level == 1)
         vec.push_back(*node);
 
-    // Recur for left and right subtrees
-    verticalLine(node->left, vec, line_no, hd - 1);
-    verticalLine(node->right, vec, line_no, hd + 1);
+    else if (level > 1) {
+        getGivenLevel(node->left, vec, level - 1);
+        getGivenLevel(node->right, vec, level - 1);
+    }
 }
 
-void verticalOrder(TriangleStruct *root, std::vector<TriangleStruct>& vec) {
-    // Find min and max distanes with respect to root
-    int min = 0, max = 0;
-    findMinMax(root, &min, &max, 0);
-
-    // Iterate through all possible vertical lines starting
-    // from the leftmost line and print nodes line by line
-    for (int line_no = min; line_no <= max; line_no++) {
-        verticalLine(root, vec, line_no, 0);
-    }
+// Get nodes on level order
+void levelOrder(TriangleStruct *root, std::vector<TriangleStruct>& vec) {
+    int h = height(root);
+    for (int i = 1; i <= h; i++)
+        getGivenLevel(root, vec, i);
 }
 
 }
