@@ -8,6 +8,8 @@ uniform sampler2D directionTex;         // direction vector of reflected surface
 uniform vec2 rttTexSize;                // texture size of RTTs
 uniform vec2 trianglesTexSize;          // texture size of triangles
 
+const int INT_MIN = -2147483648;
+
 // ray definition
 struct Ray {
     vec3 origin;
@@ -22,6 +24,64 @@ struct Triangle {
     vec3 k;     // centroid
     vec3 n;     // normal
 };
+
+// queue definition
+struct Queue {
+    int front, rear, size;
+    int array[64];
+};
+
+// function to create a queue of given capacity. It initializes size of queue as 0
+Queue createQueue() {
+    Queue queue;
+    queue.size = 0;
+    queue.front = 0;
+    queue.rear = queue.array.length() - 1; // This is important, see the enqueue
+    return queue;
+}
+
+// Queue is full when size becomes equal to the capacity
+bool isFull(Queue queue) {
+    return (queue.size == queue.array.length());
+}
+
+// Queue is empty when size is 0
+bool isEmpty(Queue queue) {
+    return (queue.size == 0);
+}
+
+// Function to add an item to the queue.  It changes rear and size
+void enqueue(Queue queue, int item) {
+    if (isFull(queue))
+        return;
+    queue.rear = (queue.rear + 1) % queue.array.length();
+    queue.array[queue.rear] = item;
+    queue.size = queue.size + 1;
+}
+
+// Function to remove an item from queue.  It changes front and size
+int dequeue(Queue queue) {
+    if (isEmpty(queue))
+        return INT_MIN;
+    int item = queue.array[queue.front];
+    queue.front = (queue.front + 1) % queue.array.length();
+    queue.size = queue.size - 1;
+    return item;
+}
+
+// Function to get front of queue
+int front(Queue queue) {
+    if (isEmpty(queue))
+        return INT_MIN;
+    return queue.array[queue.front];
+}
+
+// Function to get rear of queue
+int rear(Queue queue) {
+    if (isEmpty(queue))
+        return INT_MIN;
+    return queue.array[queue.rear];
+}
 
 float getTexData(int i, int j) {
     return texelFetch(trianglesTex, ivec2(i,j), 0).r;
@@ -56,6 +116,58 @@ bool rayPlaneIntersection(Ray ray, vec4 plane, out vec3 intersectedPoint) {
     return true;
 }
 
+// Calculate the distance between two points
+float dist(vec3 a, vec3 b) {
+    vec3 c = a - b;
+    return (c.x * c.x +
+            c.y * c.y +
+            c.z * c.z);
+}
+
+void nearest(vec3 nd, out Triangle best, out float best_dist) {
+
+    Queue queue = createQueue();
+    enqueue(queue, 0);
+    int i = 0;
+
+    bool first = true;
+
+    while (!isEmpty(queue)) {
+        int idx = dequeue(queue);
+
+        if (idx > (trianglesTexSize.x - 1))
+            continue;
+
+        Triangle root = getTriangleData(idx);
+        float d = dist(root.k, nd);
+        float dx = 0;
+        switch (i) {
+            case 0: dx = root.k.x - nd.x; break;
+            case 1: dx = root.k.y - nd.y; break;
+            case 2: dx = root.k.z - nd.z; break;
+        }
+
+        if (first || d < best_dist) {
+            best_dist = d;
+            best = root;
+            first = false;
+        }
+
+        // If chance of exact match is high
+        if (best_dist == 0)
+            return;
+
+        i = (i + 1) % 3;
+
+        int idx_left  = 2 * idx + 1;
+        int idx_right = 2 * idx + 2;
+        if (dx > 0)
+            enqueue(queue, idx_left);
+        else
+            enqueue(queue, idx_right);
+    }
+}
+
 // computes the intersection between the ray and triangle
 bool rayTriangleIntersection (Ray ray, vec3 a, vec3 b, vec3 c, out vec3 intersectedPoint) {
     // get ray-triangle edges
@@ -81,20 +193,33 @@ bool rayTriangleIntersection (Ray ray, vec3 a, vec3 b, vec3 c, out vec3 intersec
 vec4 secondaryReflections() {
     Ray ray;
 
+    vec4 primaryRefl = texture2D(firstReflectionTex, gl_FragCoord.xy / rttTexSize);
+    vec4 origin = texture2D(originTex, gl_FragCoord.xy / rttTexSize);
+    vec4 direction = texture2D(directionTex, gl_FragCoord.xy / rttTexSize);
+
     // perform ray-triangle intersection only for pixels with valid normal values
-    for(int i = 0; i < rttTexSize.x; i++) {
-        for (int j = 0; j < rttTexSize.y; j++) {
+    if (primaryRefl.z > 0) {
+        ray.origin = origin.xyz;
+        ray.direction = direction.xyz;
 
-            // get pixel's normal value
-            float normal = texelFetch(firstReflectionTex, ivec2(i,j), 0).z;
-
-            if (normal > 0) {
-                ray.origin = texelFetch(originTex, ivec2(i,j), 0).xyz;
-                ray.direction = texelFetch(directionTex, ivec2(i,j), 0).xyz;
-            }
-
-        }
+        Triangle best;
+        float best_dist;
+        nearest(ray.origin, best, best_dist);
     }
+
+    // for(int i = 0; i < rttTexSize.x; i++) {
+    //     for (int j = 0; j < rttTexSize.y; j++) {
+
+    //         // get pixel's normal value
+    //         float normal = texelFetch(firstReflectionTex, ivec2(i,j), 0).z;
+
+    //         if (normal > 0) {
+    //             ray.origin = texelFetch(originTex, ivec2(i,j), 0).xyz;
+    //             ray.direction = texelFetch(directionTex, ivec2(i,j), 0).xyz;
+    //         }
+
+    //     }
+    // }
 
     return vec4(1,0,1,0);
 }
@@ -104,7 +229,7 @@ void main() {
     vec4 primaryRefl = texture2D(firstReflectionTex, gl_FragCoord.xy / rttTexSize);
 
     // secondary reflections by ray-tracing
-    // vec4 secondaryRefl = secondaryReflections();
+    vec4 secondaryRefl = secondaryReflections();
 
     // TODO: outData = primary and secondary reflections
     gl_FragData[0] = primaryRefl;
