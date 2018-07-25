@@ -116,6 +116,12 @@ void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     osg::ref_ptr<osg::StateSet> pass2state = _normalDepthMapNode->getChild(1)->getOrCreateStateSet();
     pass2state->addUniform(new osg::Uniform(osg::Uniform::SAMPLER_2D, "trianglesTex"));
     pass2state->setTextureAttributeAndModes(0, trianglesTexture, osg::StateAttribute::ON);
+
+    pass2state->addUniform(new osg::Uniform(osg::Uniform::FLOAT_VEC2, "trianglesTexSize"));
+    pass2state->getUniform("trianglesTexSize")->set(osg::Vec2(  trianglesTexture->getTextureWidth() * 1.0,
+                                                                trianglesTexture->getTextureHeight() * 1.0));
+
+    // std::cout << "Size: " << trianglesTexture->getTextureWidth() << "," << trianglesTexture->getTextureHeight() << std::endl;
 }
 
 osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(

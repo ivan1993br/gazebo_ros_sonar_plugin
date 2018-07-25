@@ -1,10 +1,12 @@
 #version 130
 
-uniform sampler2D trianglesTex;     // all triangles/meshes collected from the simulated scene
-uniform sampler2D firstReflectionTex;     // first reflections by rasterization
-uniform sampler2D originTex;        // incident vector of reflected surface
-uniform sampler2D directionTex;     // direction vector of reflected surface
-uniform vec2 textureSize;
+uniform sampler2D trianglesTex;         // all triangles/meshes collected from the simulated scene
+uniform sampler2D firstReflectionTex;   // first reflections by rasterization
+uniform sampler2D originTex;            // incident vector of reflected surface
+uniform sampler2D directionTex;         // direction vector of reflected surface
+
+uniform vec2 rttTexSize;                // texture size of RTTs
+uniform vec2 trianglesTexSize;          // texture size of triangles
 
 // ray definition
 struct Ray {
@@ -76,59 +78,33 @@ bool rayTriangleIntersection (Ray ray, vec3 a, vec3 b, vec3 c, out vec3 intersec
 }
 
 // secondary reflections: ray-triangle intersection
-vec4 secondaryReflections(vec4 primaryRefl, vec4 origin, vec4 direction) {
+vec4 secondaryReflections() {
     Ray ray;
-    // ray.origin = directionEyeSpace;
-    // ray.direction = reflectedDir;
 
-    // test ray-triangle intersection only for pixels with valid normal values
-    // from primary reflections
-    vec4 output = vec4(0,0,0,0);
-    // for(int i = 0; i < textureSize.x; i++) {
-    //     for (int j = 0; j < textureSize.y; j++) {
-    //         // check if normal value is positive
-    //         float normal = fetchTexel(primaryRefl, ivec2(resolution.x, resolution.y), ivec2(i,j)).x;
-    //         if (normal > 0) {
-    //             if (test == false) output.z = 0.5;
-    //             else output.z = 1.0;
-    //             test = !test;
-    //         }
+    // perform ray-triangle intersection only for pixels with valid normal values
+    for(int i = 0; i < rttTexSize.x; i++) {
+        for (int j = 0; j < rttTexSize.y; j++) {
 
-    //     }
-    // }
+            // get pixel's normal value
+            float normal = texelFetch(firstReflectionTex, ivec2(i,j), 0).z;
 
+            if (normal > 0) {
+                ray.origin = texelFetch(originTex, ivec2(i,j), 0).xyz;
+                ray.direction = texelFetch(directionTex, ivec2(i,j), 0).xyz;
+            }
 
+        }
+    }
 
-    // for (int idx = 0; idx < resolution.x; idx++) {
-    //     for (int idy = 0; idy < resolution.y; idy++) {
-    //         if ()
-    //     }
-    //    }
-
-
-
-    // TODO: test ray-triangle intersection only for pixels with valid normal values
-    // for primary reflections
-    // for (int idx = 0; idx < texSize.x; idx++) {
-    //     Triangle triangle = getTriangleData(idx);
-    //
-    //     // TODO: test triangle intersection
-    //     // hasIntersection = rayTriangleIntersection(ray, A, B, C, intersectedPoint);
-    // }
-
-    return output;
+    return vec4(1,0,1,0);
 }
 
 void main() {
     // primary reflections by rasterization
-    vec4 primaryRefl = texture2D(firstReflectionTex, gl_FragCoord.xy / textureSize);
-
-    // origin/incident and direction vectors of reflected surfaces
-    vec4 origin = texture2D(originTex, gl_FragCoord.xy / textureSize);
-    vec4 direction = texture2D(directionTex, gl_FragCoord.xy / textureSize);
+    vec4 primaryRefl = texture2D(firstReflectionTex, gl_FragCoord.xy / rttTexSize);
 
     // secondary reflections by ray-tracing
-    vec4 secondaryRefl = secondaryReflections(primaryRefl, origin, direction);
+    // vec4 secondaryRefl = secondaryReflections();
 
     // TODO: outData = primary and secondary reflections
     gl_FragData[0] = primaryRefl;
