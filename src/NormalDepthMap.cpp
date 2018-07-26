@@ -104,9 +104,16 @@ void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     // store all triangles as a balanced kd-tree
     TriangleStruct* tree = makeTree(&_visitor.triangles_data.triangles[0], _visitor.triangles_data.triangles.size(), 0, 3);
 
+    // std::cout << "Height: " << height(tree) << std::endl;
+
     // organize the triangles (nodes) of balanced kd-tree in vertical order
     std::vector<TriangleStruct> triangles;
     levelOrder(tree, triangles);
+
+    // std::cout << "Teste" << std::endl;
+    // std::cout << "A: " << triangles[0].data[0][0] << "," << triangles[0].data[0][1] << "," << triangles[0].data[0][2] << std::endl;
+    // std::cout << "B: " << triangles[0].data[1][0] << "," << triangles[0].data[1][1] << "," << triangles[0].data[1][2] << std::endl;
+    // std::cout << "C: " << triangles[0].data[2][0] << "," << triangles[0].data[2][1] << "," << triangles[0].data[2][2] << std::endl;
 
     // convert triangles to texture
     osg::ref_ptr<osg::Texture2D> trianglesTexture;
@@ -157,6 +164,10 @@ osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
     pass2prog->addShader(osg::Shader::readShaderFile(osg::Shader::VERTEX, osgDB::findDataFile(PASS2_VERT_PATH)));
     pass2prog->addShader(osg::Shader::readShaderFile(osg::Shader::FRAGMENT, osgDB::findDataFile(PASS2_FRAG_PATH)));
     pass2state->setAttributeAndModes( pass2prog, osg::StateAttribute::ON );
+
+    // // 2nd pass: uniforms
+    // pass2state->addUniform(new osg::Uniform(osg::Uniform::FLOAT, "farPlane"));
+    // pass2state->getUniform("farPlane")->set(maxRange);
 
     // set the main root
     localRoot->addChild(pass1root);

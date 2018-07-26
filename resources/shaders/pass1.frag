@@ -53,6 +53,7 @@ vec4 primaryReflections() {
         if (drawNormal) output.z = abs(dot(nPositionEyeSpace, nNormalEyeSpace));
         if (drawDepth)  output.y = linearDepth;
     }
+
     return output;
 }
 

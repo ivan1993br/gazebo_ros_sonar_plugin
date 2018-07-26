@@ -1,6 +1,7 @@
 // C++ includes
 #include "Tools.hpp"
 #include <cmath>
+#include <iostream>
 
 namespace normal_depth_map {
 
@@ -55,6 +56,8 @@ void TrianglesVisitor::apply( osg::Geode& geode ) {
 void convertTrianglesToTextures(
                       std::vector<TriangleStruct> triangles,
                       osg::ref_ptr<osg::Texture2D>& texture){
+
+    // std::cout << "No Triangles: " << triangles.size() << std::endl;
 
     osg::ref_ptr<osg::Image> image = new osg::Image();
     image->allocateImage( triangles.size(),

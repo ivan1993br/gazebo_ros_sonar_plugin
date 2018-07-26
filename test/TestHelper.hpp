@@ -38,9 +38,9 @@ namespace test_helper {
                                  std::vector<osg::Vec3d> *centers,
                                  std::vector<osg::Vec3d> *ups);
 
-     // convert opencv to osg images
-     osg::ref_ptr<osg::Image> convertCV2OSG(const cv::Mat& cv_image);
+    // convert opencv to osg images
+    osg::ref_ptr<osg::Image> convertCV2OSG(const cv::Mat& cv_image);
 
-     // convert osg to opencv images
-     cv::Mat convertOSG2CV(const osg::ref_ptr<osg::Image>& osgImage);
+    // convert osg to opencv images
+    cv::Mat convertOSG2CV(const osg::ref_ptr<osg::Image>& osgImage);
 }

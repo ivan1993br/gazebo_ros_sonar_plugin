@@ -14,13 +14,13 @@
 #include <normal_depth_map/Tools.hpp>
 #include "TestHelper.hpp"
 
-#define BOOST_TEST_MODULE "Multipass_test"
+#define BOOST_TEST_MODULE "Multipass3_test"
 #include <boost/test/unit_test.hpp>
 
 using namespace normal_depth_map;
 using namespace test_helper;
 
-BOOST_AUTO_TEST_SUITE(Multipass)
+BOOST_AUTO_TEST_SUITE(Multipass3)
 
 static const char* mrtVertSource1 = {
     "#version 130\n"
@@ -58,6 +58,7 @@ static const char* mrtFragSource2 = {
     "void main(void)\n"
     "{\n"
     "   gl_FragData[0] = 1 - texture2D(pass12tex, gl_TexCoord[0].xy);\n"
+    // "   gl_FragData[0] = 1 - texture2D(pass12tex, gl_FragCoord.xy / vec2(800.0,600.0));\n"
     "}\n"
 };
 
@@ -85,31 +86,38 @@ struct SnapImage : public osg::Camera::DrawCallback {
 };
 
 // create a RTT (render to texture) camera
-osg::Camera* createRTTCamera( osg::Camera::BufferComponent buffer, osg::Texture2D* tex, osg::Camera* cam = new osg::Camera )
+osg::Camera* createRTTCamera( osg::Camera::BufferComponent buffer, int renderOrder, osg::Texture2D* tex, osg::GraphicsContext* gfxc, osg::Camera* cam = new osg::Camera )
 {
     osg::ref_ptr<osg::Camera> camera = cam;
     camera->setClearColor( osg::Vec4() );
     camera->setClearMask( GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT );
     camera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
-    camera->setRenderOrder( osg::Camera::PRE_RENDER );
+    camera->setRenderOrder( osg::Camera::PRE_RENDER, renderOrder );
     camera->setViewport( 0, 0, tex->getTextureWidth(), tex->getTextureHeight() );
+    camera->setGraphicsContext(gfxc);
+    camera->setDrawBuffer( GL_FRONT );
+    // camera->setReadBuffer( GL_FRONT );
+    camera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
     camera->attach( buffer, tex );
     return camera.release();
 }
 
-// create the post render camera
-osg::Camera* createHUDCamera(osg::Camera::BufferComponent buffer, osg::Texture2D* tex,  osg::Camera* cam = new osg::Camera)
-{
-    osg::ref_ptr<osg::Camera> camera = new osg::Camera;
-    camera->setClearMask(0);
-    camera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER, osg::Camera::FRAME_BUFFER );
-    camera->setReferenceFrame( osg::Camera::ABSOLUTE_RF );
-    camera->setRenderOrder( osg::Camera::POST_RENDER );
-    camera->setViewMatrix( osg::Matrixd::identity() );
-    camera->setViewport(0, 0, tex->getTextureWidth(), tex->getTextureHeight());
-    camera->attach( buffer, tex );
-    return camera.release();
-}
+// // create the post render camera
+// osg::Camera* createHUDCamera(osg::Camera::BufferComponent buffer, osg::Texture2D* tex, osg::GraphicsContext* gfxc, osg::Camera* cam = new osg::Camera)
+// {
+//     osg::ref_ptr<osg::Camera> camera = cam;
+//     camera->setClearMask(0);
+//     camera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER, osg::Camera::FRAME_BUFFER );
+//     camera->setReferenceFrame( osg::Camera::ABSOLUTE_RF );
+//     camera->setRenderOrder( osg::Camera::POST_RENDER );
+//     camera->setViewMatrix( osg::Matrixd::identity() );
+//     camera->setViewport(0, 0, tex->getTextureWidth(), tex->getTextureHeight());
+//     camera->setGraphicsContext(gfxc);
+//     camera->setDrawBuffer( GL_FRONT );
+//     camera->setReadBuffer( GL_FRONT );
+//     camera->attach( buffer, tex );
+//     return camera.release();
+// }
 
 // create float textures to be rendered in FBO
 osg::Texture2D* createFloatTexture(uint w, uint h)
@@ -136,61 +144,65 @@ BOOST_AUTO_TEST_CASE(multipass_testCase) {
     traits->readDISPLAY();
     osg::ref_ptr<osg::GraphicsContext> gfxc = osg::GraphicsContext::createGraphicsContext(traits.get());
 
+    // FIRST PASS: NORMAL DATA
+    osg::ref_ptr<osg::Group> pass1root = new osg::Group();
+    osg::ref_ptr<osg::StateSet> pass1state = pass1root->getOrCreateStateSet();
+    osg::ref_ptr<osg::Program> pass1prog = new osg::Program();
+    pass1prog->addShader( new osg::Shader(osg::Shader::VERTEX,   mrtVertSource1) );
+    pass1prog->addShader( new osg::Shader(osg::Shader::FRAGMENT, mrtFragSource1) );
+    pass1state->setAttributeAndModes( pass1prog.get(), osg::StateAttribute::ON );
+    pass1root->addChild(scene);
+
     // first pass: texture, camera and scene
+    osg::ref_ptr<osgViewer::Viewer> viewer = new osgViewer::Viewer;
     osg::Texture2D* pass12tex = createFloatTexture(w, h);
-    osg::ref_ptr<osg::Camera> pass1cam = createRTTCamera(osg::Camera::COLOR_BUFFER0, pass12tex);
-    pass1cam->setGraphicsContext(gfxc);
-    pass1cam->setDrawBuffer( GL_FRONT );
-    pass1cam->setReadBuffer( GL_FRONT );
-    pass1cam->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
-    pass1cam->addChild( scene.get() );
+    osg::ref_ptr<osg::Camera> pass1cam = createRTTCamera(osg::Camera::COLOR_BUFFER, 0, pass12tex, gfxc);
+    pass1cam->addChild( pass1root );
 
     // first pass: shader
-    osg::ref_ptr<osg::Program> pass1prog = new osg::Program;
-    pass1prog->addShader( new osg::Shader(osg::Shader::VERTEX, mrtVertSource1) );
-    pass1prog->addShader( new osg::Shader(osg::Shader::FRAGMENT, mrtFragSource1) );
-    pass1cam->getOrCreateStateSet()->setAttributeAndModes( pass1prog.get(), osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
+    osg::ref_ptr<osg::Group> pass2root = new osg::Group();
+    osg::ref_ptr<osg::StateSet> pass2state = pass2root->getOrCreateStateSet();
+    osg::ref_ptr<osg::Program> pass2prog = new osg::Program();
+    pass2prog->addShader( new osg::Shader(osg::Shader::VERTEX,   mrtVertSource2) );
+    pass2prog->addShader( new osg::Shader(osg::Shader::FRAGMENT, mrtFragSource2) );
+    pass2state->setTextureAttributeAndModes(0, pass12tex, osg::StateAttribute::ON);
+    pass2state->addUniform(new osg::Uniform("pass12tex", 0));
+    pass2state->setAttributeAndModes( pass2prog.get(), osg::StateAttribute::ON );
 
-    // set RTT texture to quad
-    osg::Geode* geode( new osg::Geode );
-    geode->addDrawable( osg::createTexturedQuadGeometry( osg::Vec3(-1,-1,0), osg::Vec3(2.0,0.0,0.0), osg::Vec3(0.0,2.0,0.0)) );
-    geode->getOrCreateStateSet()->setTextureAttributeAndModes( 0, pass12tex );
-    geode->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
-    geode->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF );
-
-    osgViewer::Viewer viewer;
+    // // set RTT texture to quad
+    // // osg::Geode* geode( new osg::Geode );
+    // // geode->addDrawable( osg::createTexturedQuadGeometry( osg::Vec3(-1,-1,0), osg::Vec3(2.0,0.0,0.0), osg::Vec3(0.0,2.0,0.0)) );
+    // // geode->getOrCreateStateSet()->setTextureAttributeAndModes( 0, pass12tex );
+    // // geode->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
+    // // geode->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF );
+    // // pass2root->addChild(geode);
 
     // final pass: texture and post render camera
-    osg::Texture2D* pass2tex = createFloatTexture(w, h);
-    osg::ref_ptr<osg::Camera> pass2cam = createHUDCamera(osg::Camera::COLOR_BUFFER, pass2tex, viewer.getCamera());
-    pass2cam->setGraphicsContext(gfxc);
-    pass2cam->setDrawBuffer( GL_FRONT );
-    pass2cam->setReadBuffer( GL_FRONT );
-    pass2cam->addChild( geode );
 
-    // final pass: shader
-    osg::ref_ptr<osg::Program> pass2prog = new osg::Program;
-    pass2prog->addShader( new osg::Shader(osg::Shader::VERTEX, mrtVertSource2) );
-    pass2prog->addShader( new osg::Shader(osg::Shader::FRAGMENT, mrtFragSource2) );
-    pass2cam->getOrCreateStateSet()->setTextureAttributeAndModes( 0, pass12tex );
-    pass2cam->getOrCreateStateSet()->setAttributeAndModes( pass2prog.get(), osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE );
-    pass2cam->getOrCreateStateSet()->addUniform( new osg::Uniform("pass12tex", 0) );
+    osg::Texture2D* pass2tex = createFloatTexture(w, h);
+    osg::ref_ptr<osg::Camera> pass2cam = createRTTCamera(osg::Camera::COLOR_BUFFER, 1, pass2tex, gfxc);
+    pass2cam->addChild( pass2root );
 
     // setup the root scene
-    osg::ref_ptr<osg::Group> root = new osg::Group;
-    root->addChild( pass1cam.get() );
+    osg::ref_ptr<osg::Group> root = new osg::Group();
     root->addChild( pass2cam.get() );
-    root->addChild( scene.get() );
-
-    // setup viewer
-    viewer.setUpViewInWindow( 0, 0, w, h );
-    viewer.setSceneData( root.get() );
-    viewer.realize();
+    root->addChild( pass1cam.get() );
+    //
+    // // setup viewer
+    // // viewer->getCamera()->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
+    // viewer->getCamera()->setViewport(0,0,w,h);
+    // // viewer->getCamera()->setGraphicsContext(gfxc);
+    // // viewer->setUpViewInWindow( 0, 0, w, h );
+    viewer->setSceneData( root );
+    viewer->realize();
 
     // render texture to image
     SnapImage* finalDrawCallback = new SnapImage(gfxc, pass2tex);
     pass2cam->setFinalDrawCallback(finalDrawCallback);
-    viewer.run();
+
+    // osgDB::writeNodeFile(*root, "Test-color.osgt");
+
+    viewer->run();
 }
 
 BOOST_AUTO_TEST_SUITE_END();
