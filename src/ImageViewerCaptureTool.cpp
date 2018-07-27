@@ -42,25 +42,6 @@ osg::Camera *ImageViewerCaptureTool::createRTTCamera(osg::Camera::BufferComponen
     return camera.release();
 }
 
-// create a RTT (render to texture) camera
-osg::Camera *ImageViewerCaptureTool::createRTTCamera(osg::Texture2D *tex0, osg::Texture2D *tex1, osg::Texture2D *tex2, osg::GraphicsContext *gfxc)
-{
-    osg::ref_ptr<osg::Camera> camera = new osg::Camera();
-    camera->setClearColor(osg::Vec4(0, 0, 0, 1));
-    camera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    camera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
-    camera->setRenderOrder(osg::Camera::PRE_RENDER, 0);
-    camera->setViewport(0, 0, tex0->getTextureWidth(), tex0->getTextureHeight());
-    camera->setGraphicsContext(gfxc);
-    camera->setDrawBuffer(GL_FRONT);
-    camera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
-    camera->setViewMatrix(osg::Matrixd::identity());
-    camera->attach(osg::Camera::COLOR_BUFFER0, tex0);
-    camera->attach(osg::Camera::COLOR_BUFFER1, tex1);
-    camera->attach(osg::Camera::COLOR_BUFFER2, tex2);
-    return camera.release();
-}
-
 // create float textures to be rendered in FBO
 osg::Texture2D* ImageViewerCaptureTool::createFloatTexture(uint width, uint height)
 {
@@ -126,9 +107,7 @@ void ImageViewerCaptureTool::setupViewer(osg::ref_ptr<osg::Group> node, uint wid
 
     // 1st pass: primary reflections by rasterization pipeline
     osg::ref_ptr<osg::Texture2D> pass12tex0 = createFloatTexture(width, height);
-    osg::ref_ptr<osg::Texture2D> pass12tex1 = createFloatTexture(width, height);
-    osg::ref_ptr<osg::Texture2D> pass12tex2 = createFloatTexture(width, height);
-    osg::ref_ptr<osg::Camera> pass1cam = createRTTCamera(pass12tex0, pass12tex1, pass12tex2, gfxc);
+    osg::ref_ptr<osg::Camera> pass1cam = createRTTCamera(osg::Camera::COLOR_BUFFER0, pass12tex0, gfxc);
     pass1cam->addChild(scene);
     pass1root->addChild(pass1cam);
 
@@ -142,12 +121,6 @@ void ImageViewerCaptureTool::setupViewer(osg::ref_ptr<osg::Group> node, uint wid
 
     pass2state->addUniform(new osg::Uniform("firstReflectionTex", 1));
     pass2state->setTextureAttributeAndModes(1, pass12tex0, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-
-    pass2state->addUniform(new osg::Uniform("originTex", 2));
-    pass2state->setTextureAttributeAndModes(2, pass12tex1, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-
-    pass2state->addUniform(new osg::Uniform("directionTex", 3));
-    pass2state->setTextureAttributeAndModes(3, pass12tex2, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 
     pass2state->addUniform(new osg::Uniform(osg::Uniform::FLOAT_VEC2, "rttTexSize"));
     pass2state->getUniform("rttTexSize")->set(osg::Vec2(width * 1.0, height * 1.0));

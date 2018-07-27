@@ -5,7 +5,8 @@ uniform vec3 cameraPos;
 
 out vec3 positionEyeSpace;
 out vec3 normalEyeSpace;
-out vec3 directionEyeSpace;
+
+out vec3 viewDir;
 out vec3 reflectedDir;
 out mat3 TBN;
 
@@ -20,7 +21,7 @@ void main() {
     // eye space
     positionEyeSpace = vec3(gl_ModelViewMatrix * gl_Vertex);
     normalEyeSpace = gl_NormalMatrix * gl_Normal;
-    directionEyeSpace = normalize(positionWorldSpace - cameraPos);
+    // directionEyeSpace = normalize(positionWorldSpace - cameraPos);
 
     // Normal maps are built in tangent space, interpolating the vertex normal and a RGB texture.
     // TBN is the conversion matrix between Tangent Space -> World Space.
@@ -30,9 +31,9 @@ void main() {
     TBN = mat3(T, B, N);
 
     // calculate the reflection direction for an incident vector
+    viewDir = normalize(positionWorldSpace - cameraPos);
     vec3 WN = normalize(normalWorldSpace);
-    vec3 I = directionEyeSpace;
-    reflectedDir = normalize(reflect(I, WN));
+    reflectedDir = normalize(reflect(viewDir, WN));
 
     // Texture for normal mapping (irregularities surfaces)
     gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
