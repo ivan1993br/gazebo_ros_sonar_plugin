@@ -2,8 +2,8 @@
 
 uniform mat4 osg_ViewMatrixInverse;
 
-out vec3 posWorldSpace;
-out vec3 normalWorldSpace;
+out vec3 worldPos;
+out vec3 worldNormal;
 out vec3 cameraPos;
 
 void main() {
@@ -11,10 +11,10 @@ void main() {
 
     // position/normal in world space
     mat4 modelWorld = osg_ViewMatrixInverse * gl_ModelViewMatrix;
-    posWorldSpace = vec3(modelWorld * gl_Vertex);
-    normalWorldSpace = mat3(modelWorld) * gl_Normal;
+    worldPos = vec3(modelWorld * gl_Vertex);
+    worldNormal = mat3(modelWorld) * gl_Normal;
 
-    // incident vector
+    // camera position in world space
     cameraPos = osg_ViewMatrixInverse[3].xyz;
 
     // Normal maps are built in tangent space, interpolating the vertex normal and a RGB texture.
