@@ -2,9 +2,9 @@
 
 in vec3 positionEyeSpace;
 in vec3 normalEyeSpace;
+in vec3 positionWorldSpace;
+in vec3 normalWorldSpace;
 in mat3 TBN;
-in vec3 viewDir;
-in vec3 reflectedDir;
 
 uniform float farPlane;
 uniform bool drawNormal;
@@ -19,20 +19,21 @@ uniform sampler2D trianglesTex;         // all triangles/meshes collected from t
 uniform vec2 trianglesTexSize;          // texture size of triangles
 
 const int INT_MIN = -2147483648;
+const float EPSILON = 0.001;
 
 // ray definition
 struct Ray {
-    vec3 origin;
-    vec3 direction;
+    vec3 origin;        // starting point
+    vec3 direction;     // ray direction
 };
 
 // triangle definition
 struct Triangle {
-    vec3 a;     // vertex A
-    vec3 b;     // vertex B
-    vec3 c;     // vertex C
-    vec3 k;     // centroid
-    vec3 n;     // normal
+    vec3 v0;            // vertex A
+    vec3 v1;            // vertex B
+    vec3 v2;            // vertex C
+    vec3 center;        // centroid
+    vec3 normal;        // normal
 };
 
 // queue definition
@@ -99,52 +100,12 @@ float getTexData(int i, int j) {
 
 Triangle getTriangleData(int idx) {
     Triangle triangle;
-    triangle.a = vec3(getTexData(idx,0), getTexData(idx,1), getTexData(idx,2));
-    triangle.b = vec3(getTexData(idx,3), getTexData(idx,4), getTexData(idx,5));
-    triangle.c = vec3(getTexData(idx,6), getTexData(idx,7), getTexData(idx,8));
-    triangle.k = vec3(getTexData(idx,9), getTexData(idx,10), getTexData(idx,11));
-    triangle.n = vec3(getTexData(idx,12), getTexData(idx,13), getTexData(idx,14));
+    triangle.v0     = vec3(getTexData(idx,0), getTexData(idx,1), getTexData(idx,2));
+    triangle.v1     = vec3(getTexData(idx,3), getTexData(idx,4), getTexData(idx,5));
+    triangle.v2     = vec3(getTexData(idx,6), getTexData(idx,7), getTexData(idx,8));
+    triangle.center = vec3(getTexData(idx,9), getTexData(idx,10), getTexData(idx,11));
+    triangle.normal = vec3(getTexData(idx,12), getTexData(idx,13), getTexData(idx,14));
     return triangle;
-}
-
-// builds a plane with the specified three coordinates
-vec4 buildPlane(vec3 a, vec3 b, vec3 c) {
-    vec4 plane;
-    plane.xyz = normalize(cross(b - a, c - a));
-    plane.w = dot(plane.xyz, a);
-    return plane;
-}
-
-// computes the intersection between the ray and plane
-bool rayPlaneIntersection(Ray ray, vec4 plane, out vec3 intersectedPoint) {
-    // computes distance between ray-plane
-    float t = (plane.w - dot(plane.xyz, ray.origin)) / dot(plane.xyz, ray.direction);
-    if (t < 0.0) return false;
-
-    intersectedPoint = ray.origin + ray.direction * t;
-
-    return true;
-}
-
-// computes the intersection between the ray and triangle
-bool rayTriangleIntersection (Ray ray, vec3 a, vec3 b, vec3 c, out vec3 intersectedPoint) {
-    // get ray-triangle edges
-    vec3 pa = a - ray.origin;
-    vec3 pb = b - ray.origin;
-    vec3 pc = c - ray.origin;
-
-    // check if ray direction cross the triangle ABC
-    intersectedPoint.x = dot(pb, cross(ray.direction, pc));
-    if (intersectedPoint.x < 0.0) return false;
-
-    intersectedPoint.y = dot(pc, cross(ray.direction, pa));
-    if (intersectedPoint.y < 0.0) return false;
-
-    intersectedPoint.z = dot(pa, cross(ray.direction, pb));
-    if (intersectedPoint.z < 0.0) return false;
-
-    // check ray intersection with plane, which is spanned by the triangle
-    return rayPlaneIntersection(ray, buildPlane(a, b, c), intersectedPoint);
 }
 
 // Calculate the distance between two points
@@ -170,12 +131,12 @@ void nearest(vec3 nd, out Triangle best, out float best_dist) {
             continue;
 
         Triangle root = getTriangleData(idx);
-        float d = dist(root.k, nd);
+        float d = dist(root.center, nd);
         float dx = 0;
         switch (i) {
-            case 0: dx = root.k.x - nd.x; break;
-            case 1: dx = root.k.y - nd.y; break;
-            case 2: dx = root.k.z - nd.z; break;
+            case 0: dx = root.center.x - nd.x; break;
+            case 1: dx = root.center.y - nd.y; break;
+            case 2: dx = root.center.z - nd.z; break;
         }
 
         if (first || d < best_dist) {
@@ -220,9 +181,7 @@ vec4 primaryReflections() {
 
     // Depth calculation
     vec3 nPositionEyeSpace = normalize(-positionEyeSpace);
-    float linearDepth = sqrt(positionEyeSpace.x * positionEyeSpace.x +
-                             positionEyeSpace.y * positionEyeSpace.y +
-                             positionEyeSpace.z * positionEyeSpace.z);
+    float linearDepth = length(positionEyeSpace);
 
     // Attenuation effect of sound in the water
     nNormalEyeSpace = nNormalEyeSpace * exp(-2 * attenuationCoeff * linearDepth);
@@ -234,36 +193,128 @@ vec4 primaryReflections() {
     // presents the normal and depth data as matrix
     vec4 output = vec4(0, 0, 0, 1);
     if (linearDepth <= 1) {
-        if (drawNormal) output.z = abs(dot(nPositionEyeSpace, nNormalEyeSpace));
         if (drawDepth)  output.y = linearDepth;
+        if (drawNormal) output.z = abs(dot(nPositionEyeSpace, nNormalEyeSpace));
     }
 
     return output;
 }
 
+// // The Moller-Trumbore Algorithm
+// vec3 triIntersect(Ray ray, Triangle tri, out Collision col) {
+// 	vec3 org = ray.origin;
+// 	vec3 dir = ray.direction;
+
+// 	vec3 p0 = tri.v0;
+// 	vec3 p1 = tri.v1;
+// 	vec3 p2 = tri.v2;
+
+// 	vec3 s0 = p1 - p0;
+// 	vec3 s1 = p2 - p0;
+
+// 	vec3 p = cross(dir, s1);
+// 	float det = dot(s0, p);
+
+// 	if (det <= 0.0) {
+// 		return vec3(0, 0, 0);       // ray parallel to triangle
+// 	}
+
+// 	vec3 top0 = org - p0;
+// 	float u = dot(top0, p) / det;
+
+// 	if (u < 0.0 || u > 1.0) {       // outside the triangle
+// 		return vec3(0, 0, 0);
+// 	}
+
+// 	vec3 q = cross(top0, s0);
+// 	float v = dot(dir, q) / det;
+
+// 	if (v < 0.0 || u + v > 1.0) {   // outside the triangle
+// 		return vec3(0, 0, 0);
+// 	}
+
+//     // store data: distance
+//     col.dist = length(ray.origin - tri.center) / farPlane;
+
+//     // store data: normal
+//     col.normal = tri.normal;
+
+// 	return org + dir * dot(s1, q) / det;
+// }
+
+// // computes the intersection between the ray and triangle
+// bool rayTriangleIntersection (Ray ray, Triangle tri) {
+//     // get ray-triangle edges
+//     vec3 pa = tri.v0 - ray.origin;
+//     vec3 pb = tri.v1 - ray.origin;
+//     vec3 pc = tri.v2 - ray.origin;
+
+//     // check if ray direction cross the triangle ABC
+//     intersectedPoint.x = dot(pb, cross(ray.direction, pc));
+//     if (intersectedPoint.x < 0.0) return false;
+
+//     intersectedPoint.y = dot(pc, cross(ray.direction, pa));
+//     if (intersectedPoint.y < 0.0) return false;
+
+//     intersectedPoint.z = dot(pa, cross(ray.direction, pb));
+//     if (intersectedPoint.z < 0.0) return false;
+
+//     return true;
+// }
+
+int compare(float a, float b) {
+    if (a < b - EPSILON)
+        return -1;
+    else
+        if (a > b + EPSILON)
+            return 1;
+        else
+            return 0;
+}
+
+bool rayTriangleIntersection (Ray ray, Triangle tri) {
+    float a = dot(tri.normal, tri.v0 - ray.origin);
+    float b = dot(tri.normal, ray.direction);
+    if (compare(b, 0.0) == 0)
+        return false;
+
+    float r = a / b;
+    if (compare(r, 0.0) < 0)
+        return false;
+
+    return true;
+}
+
 // secondary reflections: ray-triangle intersection
 vec4 secondaryReflections(vec4 firstR) {
+
+    // calculate the reflection direction for an incident vector
+    vec3 nNormalWorldSpace = normalize(normalWorldSpace);
+    vec3 reflectedDir = reflect(positionWorldSpace, nNormalWorldSpace);
+
+    // set the ray's origin and direction
     Ray ray;
-    ray.origin = viewDir;
+    ray.origin = positionWorldSpace;
     ray.direction = reflectedDir;
 
+    // perform ray-triangle intersection only for pixels with valid normal values
     vec4 output = vec4(0,0,0,1);
 
-    // perform ray-triangle intersection only for pixels with valid normal values
     if (firstR.z > 0) {
         // find the closest triangle to the origin point
-        Triangle best;
+        Triangle tri;
         float best_dist;
-        nearest(ray.origin, best, best_dist);
+        nearest(ray.origin, tri, best_dist);
 
-        // ray-triangle intersection
-        vec3 intersectedPoint;
-        bool intersected = rayTriangleIntersection(ray, best.a, best.b, best.c, intersectedPoint);
+        // output.yz = vec2(1,1);
 
-        // TODO: compute the correct depth/normal values
-        if (intersected) {
-            output.y = 1;    // depth
-            output.z = 1;    // normal
+        // perform ray-triangle intersection
+        if (rayTriangleIntersection(ray, tri)) {
+        //     float linearDepth = length(ray.origin - tri.center) / farPlane;
+        //     if (linearDepth <= 1) {
+        //         if (drawDepth)  output.y = linearDepth;
+        //         if (drawNormal) output.z = 1;
+        //     }
         }
     }
 
@@ -275,7 +326,7 @@ void main() {
     vec4 firstR = primaryReflections();
     vec4 secndR = secondaryReflections(firstR);
 
-    // gl_FragData[0] = firstR;
-    gl_FragData[0] = secndR;
-    // gl_FragData[0] = vec4(1,1,1,1);
+    gl_FragData[0] = firstR;
+    // gl_FragData[0] = secndR;
+    // gl_FragData[0] = vec4(1,0,0,1);
 }

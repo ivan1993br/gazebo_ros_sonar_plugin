@@ -113,12 +113,12 @@ void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     convertTrianglesToTextures(triangles, trianglesTexture);
 
     // pass the triangles data to GLSL as uniform
-    osg::ref_ptr<osg::StateSet> pass2state = _normalDepthMapNode->getChild(0)->getOrCreateStateSet();
-    pass2state->addUniform(new osg::Uniform(osg::Uniform::SAMPLER_2D, "trianglesTex"));
-    pass2state->setTextureAttributeAndModes(0, trianglesTexture, osg::StateAttribute::ON);
+    osg::ref_ptr<osg::StateSet> pass1state = _normalDepthMapNode->getChild(0)->getOrCreateStateSet();
+    pass1state->addUniform(new osg::Uniform(osg::Uniform::SAMPLER_2D, "trianglesTex"));
+    pass1state->setTextureAttributeAndModes(0, trianglesTexture, osg::StateAttribute::ON);
 
-    pass2state->addUniform(new osg::Uniform(osg::Uniform::FLOAT_VEC2, "trianglesTexSize"));
-    pass2state->getUniform("trianglesTexSize")->set(osg::Vec2(  trianglesTexture->getTextureWidth() * 1.0,
+    pass1state->addUniform(new osg::Uniform(osg::Uniform::FLOAT_VEC2, "trianglesTexSize"));
+    pass1state->getUniform("trianglesTexSize")->set(osg::Vec2(  trianglesTexture->getTextureWidth() * 1.0,
                                                                 trianglesTexture->getTextureHeight() * 1.0));
 }
 
