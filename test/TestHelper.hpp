@@ -32,11 +32,17 @@ namespace test_helper {
 
     // draw the scene with a small ball in the center with a big cube, cylinder and cone in back
     void makeDemoScene(osg::ref_ptr<osg::Group> root);
+    void makeDemoScene2(osg::ref_ptr<osg::Group> root);
 
     // define different point of views of the same scene
     void viewPointsFromDemoScene(std::vector<osg::Vec3d> *eyes,
                                  std::vector<osg::Vec3d> *centers,
                                  std::vector<osg::Vec3d> *ups);
+
+    // define different point of views of the same scene
+    void viewPointsFromDemoScene2(std::vector<osg::Vec3d> *eyes,
+                                  std::vector<osg::Vec3d> *centers,
+                                  std::vector<osg::Vec3d> *ups);
 
     // convert opencv to osg images
     osg::ref_ptr<osg::Image> convertCV2OSG(const cv::Mat& cv_image);

@@ -72,21 +72,23 @@ BOOST_AUTO_TEST_CASE(vector2osgImage_testCase2) {
 BOOST_AUTO_TEST_CASE(reverberation_testCase) {
     // create a simple scene with multiple objects
     osg::ref_ptr<osg::Group> scene = new osg::Group();
-    makeDemoScene(scene);
+    makeDemoScene2(scene);
 
     // sonar parameters
-    float maxRange = 50;      // 50 meters
-    float fovX = M_PI / 6;    // 30 degrees
-    float fovY = M_PI / 6;    // 30 degrees
+    float maxRange = 15;      // 15 meters
+    float fovX = M_PI / 4;    // 45 degrees
+    float fovY = M_PI / 4;    // 45 degrees
 
     // define the different camera point of views
     std::vector<osg::Vec3d> eyes, centers, ups;
-    viewPointsFromDemoScene(&eyes, &centers, &ups);
+    viewPointsFromDemoScene2(&eyes, &centers, &ups);
 
     // compute and display the final shader and sonar images
     for (unsigned i = 0; i < eyes.size(); ++i) {
-        cv::Mat rawShader = computeNormalDepthMap(scene, maxRange, fovX, fovY, 0, eyes[i], centers[i], ups[i]);
-        cv::imshow("rawShader", rawShader);
+        cv::Mat shaderImg = computeNormalDepthMap(scene, maxRange, fovX, fovY, 0, eyes[i], centers[i], ups[i]);
+        cv::Mat sonarImg = drawSonarImage(shaderImg, maxRange, fovX * 0.5);
+        cv::imshow("shaderImg", shaderImg);
+        cv::imshow("sonarImg", sonarImg);
         cv::waitKey();
     }
 }

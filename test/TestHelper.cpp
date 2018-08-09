@@ -104,7 +104,48 @@ void test_helper::makeDemoScene(osg::ref_ptr<osg::Group> root) {
     root->addChild(box);
 }
 
-// define different point of views of the same scene
+// draw the scene with two boxes, two spheres, one cylinder and one cone over a plane
+void test_helper::makeDemoScene2(osg::ref_ptr<osg::Group> root) {
+    const float radius = 0.8f;
+    const float height = 1.0f;
+    osg::TessellationHints* hints = new osg::TessellationHints();
+    hints->setDetailRatio(2.0f);
+
+    osg::Geode* geode = new osg::Geode();
+    osg::ShapeDrawable* shape = new osg::ShapeDrawable();
+
+    // shape = new osg::ShapeDrawable(new osg::Box(osg::Vec3(0.0f, -2.0f, 0.0f), 30, 0.1f, 30), hints);
+    // shape->setColor(osg::Vec4(0.5f, 0.5f, 0.7f, 1.0f));
+    // geode->addDrawable(shape);
+
+    shape = new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(-3.0f, 0.0f, 0.0f), radius), hints);
+    shape->setColor(osg::Vec4(0.6f, 0.8f, 0.8f, 1.0f));
+    geode->addDrawable(shape);
+
+    shape = new osg::ShapeDrawable(new osg::Box(osg::Vec3(3.0f, 0.0f, 0.0f), 2 * radius), hints);
+    shape->setColor(osg::Vec4(0.4f, 0.9f, 0.3f, 1.0f));
+    geode->addDrawable(shape);
+
+    shape = new osg::ShapeDrawable(new osg::Cone(osg::Vec3(0.0f, 0.0f, -3.0f), radius, height), hints);
+    shape->setColor(osg::Vec4(0.2f, 0.5f, 0.7f, 1.0f));
+    geode->addDrawable(shape);
+
+    shape = new osg::ShapeDrawable(new osg::Cylinder(osg::Vec3(0.0f, 0.0f, 3.0f), radius, height), hints);
+    shape->setColor(osg::Vec4(1.0f, 0.3f, 0.3f, 1.0f));
+    geode->addDrawable(shape);
+
+    shape = new osg::ShapeDrawable(new osg::Box(osg::Vec3(0.0f, 3.0f, 0.0f), 2, 0.1f, 2), hints);
+    shape->setColor(osg::Vec4(0.8f, 0.8f, 0.4f, 1.0f));
+    geode->addDrawable(shape);
+
+    shape = new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(0.0f, 0.0f, 0.0f), radius * 1.5f), hints);
+    shape->setColor(osg::Vec4(0.8f, 0.8f, 0.4f, 1.0f));
+    geode->addDrawable(shape);
+
+    root->addChild(geode);
+}
+
+// define different point of views of the first scene
 void test_helper::viewPointsFromDemoScene(std::vector<osg::Vec3d> *eyes,
                           std::vector<osg::Vec3d> *centers,
                           std::vector<osg::Vec3d> *ups) {
@@ -128,6 +169,16 @@ void test_helper::viewPointsFromDemoScene(std::vector<osg::Vec3d> *eyes,
     eyes->push_back(osg::Vec3d(0.0176255, -56.5841, -10.0666));
     centers->push_back(osg::Vec3d(0.0176255, -55.5841, -10.0666));
     ups->push_back(osg::Vec3d(0, 0, 1));
+}
+
+// define different point of views of the second scene
+void test_helper::viewPointsFromDemoScene2(std::vector<osg::Vec3d> *eyes,
+                                          std::vector<osg::Vec3d> *centers,
+                                          std::vector<osg::Vec3d> *ups)
+{
+    eyes->push_back(osg::Vec3d(2.81722, 6.55682, 7.45695));
+    centers->push_back(osg::Vec3d(2.53582, 5.95183, 6.7121));
+    ups->push_back(osg::Vec3d(-0.312882, 0.791641, -0.524795));
 }
 
 osg::ref_ptr<osg::Image> test_helper::convertCV2OSG(const cv::Mat& cv_image) {
