@@ -273,6 +273,6 @@ void main() {
     // output: secondary reflections by ray-tracing
     vec4 secndR = secondaryReflections(firstR);
 
-    // gl_FragData[0] = firstR;
-    gl_FragData[0] = secndR;
+    gl_FragData[0] = firstR;
+    // gl_FragData[0] = secndR;
 }
