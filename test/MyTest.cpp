@@ -22,30 +22,6 @@ using namespace test_helper;
 
 BOOST_AUTO_TEST_SUITE(FboMrt)
 
-struct SnapImage : public osg::Camera::DrawCallback {
-    SnapImage(osg::GraphicsContext* gc, osg::Texture2D* tex1, osg::Texture2D* tex2 ) {
-        if (gc->getTraits()) {
-            _texColor = tex1;
-            _texDepth = tex2;
-        }
-    }
-
-    virtual void operator () (osg::RenderInfo& renderInfo) const {
-        // color buffer
-        renderInfo.getState()->applyTextureAttribute(0, _texColor);
-        osg::ref_ptr<osg::Image> mColor = new osg::Image();
-        mColor->readImageFromCurrentTexture(renderInfo.getContextID(), true, GL_UNSIGNED_BYTE);
-        osgDB::ReaderWriter::WriteResult wrColor = osgDB::Registry::instance()->writeImage(*mColor, "./Test-color.png", NULL);
-
-        // depth buffer
-        renderInfo.getState()->applyTextureAttribute(0, _texDepth);
-        osg::ref_ptr<osg::Image> mDepth = new osg::Image();
-        mDepth->readImageFromCurrentTexture(renderInfo.getContextID(), true, GL_UNSIGNED_BYTE);
-    }
-    osg::ref_ptr<osg::Texture2D> _texColor;
-    osg::ref_ptr<osg::Texture2D> _texDepth;
-};
-
 osg::Camera* setupMRTCamera( osg::ref_ptr<osg::Camera> camera, std::vector<osg::Texture2D*>& attachedTextures, int w, int h ) {
     camera->setClearColor( osg::Vec4() );
     camera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -77,7 +53,6 @@ osg::Camera* setupMRTCamera( osg::ref_ptr<osg::Camera> camera, std::vector<osg::
 
 BOOST_AUTO_TEST_CASE(fboRtt_testCase) {
     osg::ref_ptr< osg::Group > root( new osg::Group );
-    // makeDemoScene(root);
     makeDemoScene2(root);
     unsigned int winW = 800;
     unsigned int winH = 600;
@@ -109,12 +84,14 @@ BOOST_AUTO_TEST_CASE(fboRtt_testCase) {
 
     root->addChild(postRenderCamera);
 
-    // SnapImage* finalDrawCallback = new SnapImage(viewer.getCamera()->getGraphicsContext(),
-    //                                              attachedTextures[0],
-    //                                              attachedTextures[1]);
-    // mrtCamera->setFinalDrawCallback(finalDrawCallback);
-
     viewer.run();
+
+    osg::Vec3f eye, center, up;
+    viewer.getCamera()->getViewMatrixAsLookAt(eye, center, up);
+    std::cout << "--- camera params ---" << std::endl;
+    std::cout << "eye    : " << eye.x() << "," << eye.y() << "," << eye.z() << std::endl;
+    std::cout << "center : " << center.x() << "," << center.y() << "," << center.z() << std::endl;
+    std::cout << "up     : " << up.x() << "," << up.y() << "," << up.z() << std::endl;
 }
 
 BOOST_AUTO_TEST_SUITE_END();
