@@ -12,7 +12,6 @@
 #include <osg/Texture2D>
 #include <osg/Image>
 
-
 namespace normal_depth_map {
 
     /**
@@ -41,37 +40,40 @@ namespace normal_depth_map {
      * @brief
      *
      */
-    struct TriangleStruct {
-        std::vector< osg::Vec3 > data;
-        TriangleStruct *left, *right;
+    struct Triangle
+    {
+        std::vector<osg::Vec3f> data;
 
-        TriangleStruct()
-            : data(5, osg::Vec3(0,0,0))
-            , left(NULL)
-            , right(NULL){};
+        Triangle()
+            : data(5, osg::Vec3f(0, 0, 0)){};
 
-        TriangleStruct(osg::Vec3 v1, osg::Vec3 v2, osg::Vec3 v3)
-            : data(5, osg::Vec3(0,0,0))
-            , left(NULL)
-            , right(NULL) {
-
+        Triangle(osg::Vec3f v1, osg::Vec3f v2, osg::Vec3f v3)
+            : data(5, osg::Vec3f(0, 0, 0))
+        {
             setTriangle(v1, v2, v3);
         };
 
-        void setTriangle(osg::Vec3 v1, osg::Vec3 v2, osg::Vec3 v3){
-            data[0] = v1;                                  // vertex 1
-            data[1] = v2;                                  // vertex 2
-            data[2] = v3;                                  // vertex 3
-            data[3] = (v1 + v2 + v3) / 3;                  // centroid
-            data[4] = (v2 - v1).operator ^(v3 - v1);       // normal of triangle's plane
-            data[4].normalize();
+        void setTriangle(osg::Vec3f v1, osg::Vec3f v2, osg::Vec3f v3)
+        {
+            data[0] = v1;                    // vertex 1
+            data[1] = v2;                    // vertex 2
+            data[2] = v3;                    // vertex 3
+            data[3] = (v1 + v2 + v3) / 3;    // centroid
+            data[4] = (v2 - v1) ^ (v3 - v1); // surface normal
         };
 
-        std::vector<float> getAllDataAsVector(){
-            std::vector<float> output( data.size() * 3, 0.0);
-            for (unsigned int i = 0; i < output.size(); i++)
-                output[i] = data[i/3][i%3];
+        // get the triangle data as vector of float
+        std::vector<float> getAllDataAsVector()
+        {
+            float *array = &data[0].x();
+            uint arraySize = data.size() * data[0].num_components;
+            std::vector<float> output(array, array + arraySize);
             return output;
+        }
+
+        bool operator<(const Triangle &obj_1)
+        {
+            return data[3] < obj_1.data[3];
         }
     };
 
@@ -79,108 +81,67 @@ namespace normal_depth_map {
      * @brief
      *
      */
-    struct TrianglesCollection{
-        std::vector<TriangleStruct> triangles;
-        osg::Matrix local_2_world;
-
-        inline void operator ()(const osg::Vec3& v1,
-                                const osg::Vec3& v2,
-                                const osg::Vec3& v3,
-                                bool treatVertexDataAsTemporary) {
-
-            // transform vertice coordinates to world coordinates
-            osg::Vec3 v1_w = v1 * local_2_world;
-            osg::Vec3 v2_w = v2 * local_2_world;
-            osg::Vec3 v3_w = v3 * local_2_world;
-            triangles.push_back(TriangleStruct(v1_w, v2_w, v3_w));
-        };
-    };
-
-    /**
-     * @brief
-     *
-     */
-    inline void swap(TriangleStruct *a, TriangleStruct *b)
+    class TrianglesVisitor : public osg::NodeVisitor
     {
-        std::vector<osg::Vec3> tmp = a->data;
-        a->data = b->data;
-        b->data = tmp;
-    }
+      protected:
+        struct WorldTriangle
+        {
+            std::vector<Triangle> triangles;
+            osg::Matrixd local2world;
 
-    /**
-     * @brief
-     *
-     */
-    TriangleStruct *findMedian(TriangleStruct *start, TriangleStruct *end, int idx);
+            inline void operator()(const osg::Vec3f &v1,
+                                   const osg::Vec3f &v2,
+                                   const osg::Vec3f &v3,
+                                   bool treatVertexDataAsTemporary)
+            {
+                // transform vertice coordinates to world coordinates
+                osg::Vec3f v1_w = v1 * local2world;
+                osg::Vec3f v2_w = v2 * local2world;
+                osg::Vec3f v3_w = v3 * local2world;
+                triangles.push_back(Triangle(v1_w, v2_w, v3_w));
+            };
+        };
 
-    /**
-     * @brief
-     *
-     */
-    TriangleStruct *makeTree(TriangleStruct *t, int len, int idx, int dim);
+      public:
+        osg::TriangleFunctor<WorldTriangle> tf;
 
-    /**
-     * @brief
-     *
-     */
-    int height(TriangleStruct *node);
+        TrianglesVisitor()
+        {
+            setTraversalMode(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN);
+        };
 
-    /**
-     * @brief
-     *
-     */
-    void getGivenLevel(TriangleStruct *node, std::vector<TriangleStruct> &vec, int level);
+        void apply(osg::Geode &geode)
+        {
+            tf.local2world = osg::computeLocalToWorld(this->getNodePath());
+            for (size_t i = 0; i < geode.getNumDrawables(); ++i)
+                geode.getDrawable(i)->accept(tf);
+        }
 
-    /**
-     * @brief
-     *
-     */
-    void levelOrder(TriangleStruct *node, std::vector<TriangleStruct>& vec);
-
-    /**
-     * @brief
-     *
-     */
-    class TrianglesVisitor : public osg::NodeVisitor {
-    public:
-
-        osg::TriangleFunctor<TrianglesCollection> triangles_data;
-
-        TrianglesVisitor();
-        void apply( osg::Geode& geode );
+        std::vector<Triangle> getTriangles() { return tf.triangles; };
     };
 
     /**
      * @brief
      *
      */
-    void convertTrianglesToTextures(
-                    std::vector<TriangleStruct> triangles,
-                    osg::ref_ptr<osg::Texture2D>& texture);
+    template <typename T>
+    void setOSGImagePixel(osg::ref_ptr<osg::Image> &image,
+                          unsigned int x,
+                          unsigned int y,
+                          unsigned int channel,
+                          T value)
+    {
 
-    }
+        bool valid = (y < (unsigned int)image->s())
+                     && (x < (unsigned int)image->t())
+                     && (channel < (unsigned int)image->r());
 
-    /**
-    * @brief
-    *
-    */
-    template < typename T >
-    void setOSGImagePixel(  osg::ref_ptr<osg::Image>& image,
-                            unsigned int x,
-                            unsigned int y,
-                            unsigned int channel,
-                            T value ) {
-
-        bool valid = ( y < (unsigned int) image->s() )
-                        && ( x < (unsigned int) image->t() )
-                        && ( channel < (unsigned int) image->r() );
-
-        if( !valid )
+        if (!valid)
             return;
 
-        uint step = (x*image->s() + y) * image->r() + channel;
+        uint step = (x * image->s() + y) * image->r() + channel;
 
-        T* data = (T*) image->data();
+        T *data = (T *)image->data();
         data = data + step;
         *data = value;
     }
@@ -189,24 +150,9 @@ namespace normal_depth_map {
      * @brief
      *
      */
-    template<typename T>
-    void vec2osgimg( std::vector<T> const& vec, osg::ref_ptr<osg::Image>& image) {
-        image = new osg::Image;
-        image->allocateImage(vec.size(), 1, 3, GL_RGB, GL_FLOAT);
-        image->setInternalTextureFormat(GL_RGB32F_ARB);
-
-        float* data = (float*)image->data(0);
-        memcpy(data, &vec[0], vec.size() * sizeof(T));
-    }
-
-    /**
-     * @brief
-     *
-     */
-    template<typename T>
-    void osgimg2vec( osg::ref_ptr<osg::Image> const& image, std::vector<T>& vec) {
-        T* data = (T*) image->data();
-        vec = std::vector<T>(data, data + image->s());
-    }
+    void triangles2texture(
+        std::vector<Triangle> triangles,
+        osg::ref_ptr<osg::Texture2D> &texture);
+}
 
 #endif

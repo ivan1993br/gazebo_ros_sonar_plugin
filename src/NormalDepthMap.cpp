@@ -101,16 +101,15 @@ void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     // collect all triangles of scene
     _normalDepthMapNode->accept(_visitor);
 
-    // store all triangles as a balanced kd-tree
-    TriangleStruct* tree = makeTree(&_visitor.triangles_data.triangles[0], _visitor.triangles_data.triangles.size(), 0, 3);
+    // sort the scene's triangles in ascending order
+    std::vector<Triangle> triangles = _visitor.getTriangles();
+    std::sort(triangles.begin(), triangles.end());
 
-    // organize the triangles (nodes) of balanced kd-tree in vertical order
-    std::vector<TriangleStruct> triangles;
-    levelOrder(tree, triangles);
+    std::cout << "Number of triangles: " << triangles.size() << std::endl;
 
-    // convert triangles to texture
+    // convert triangles to osg texture
     osg::ref_ptr<osg::Texture2D> trianglesTexture;
-    convertTrianglesToTextures(triangles, trianglesTexture);
+    triangles2texture(triangles, trianglesTexture);
 
     // pass the triangles data to GLSL as uniform
     osg::ref_ptr<osg::StateSet> pass1state = _normalDepthMapNode->getChild(0)->getOrCreateStateSet();
@@ -141,11 +140,11 @@ osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(
     // 1st pass: uniforms
     pass1state->addUniform(new osg::Uniform(osg::Uniform::FLOAT, "farPlane"));
     pass1state->addUniform(new osg::Uniform(osg::Uniform::FLOAT, "attenuationCoeff"));
-    pass1state->addUniform(new osg::Uniform(osg::Uniform::BOOL, "drawDepth"));
+    pass1state->addUniform(new osg::Uniform(osg::Uniform::BOOL, "drawDistance"));
     pass1state->addUniform(new osg::Uniform(osg::Uniform::BOOL, "drawNormal"));
     pass1state->getUniform("farPlane")->set(maxRange);
     pass1state->getUniform("attenuationCoeff")->set(attenuationCoefficient);
-    pass1state->getUniform("drawDepth")->set(drawDepth);
+    pass1state->getUniform("drawDistance")->set(drawDepth);
     pass1state->getUniform("drawNormal")->set(drawNormal);
 
     // 2nd pass: secondary reflections by ray-triangle intersection

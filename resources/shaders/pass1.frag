@@ -7,7 +7,7 @@ in mat3 TBN;
 
 uniform float farPlane;
 uniform bool drawNormal;
-uniform bool drawDepth;                 // TODO: rename this uniform -> drawDistance
+uniform bool drawDistance;
 uniform float reflectance;
 uniform float attenuationCoeff;
 
@@ -16,8 +16,6 @@ uniform bool useNormalTex;
 
 uniform sampler2D trianglesTex;         // all triangles/meshes collected from the simulated scene
 uniform vec2 trianglesTexSize;          // texture size of triangles
-
-const int INT_MIN = -2147483648;
 
 // ray definition
 struct Ray {
@@ -33,64 +31,6 @@ struct Triangle {
     vec3 normal;    // normal
 };
 
-// queue definition
-struct Queue {
-    int front, rear, size;
-    int array[64];
-};
-
-// function to create a queue of given capacity. It initializes size of queue as 0
-Queue createQueue() {
-    Queue queue;
-    queue.size = 0;
-    queue.front = 0;
-    queue.rear = queue.array.length() - 1; // This is important, see the enqueue
-    return queue;
-}
-
-// Queue is full when size becomes equal to the capacity
-bool isFull(Queue queue) {
-    return (queue.size == queue.array.length());
-}
-
-// Queue is empty when size is 0
-bool isEmpty(Queue queue) {
-    return (queue.size == 0);
-}
-
-// Function to add an item to the queue.  It changes rear and size
-void enqueue(Queue queue, int item) {
-    if (isFull(queue))
-        return;
-    queue.rear = (queue.rear + 1) % queue.array.length();
-    queue.array[queue.rear] = item;
-    queue.size = queue.size + 1;
-}
-
-// Function to remove an item from queue.  It changes front and size
-int dequeue(Queue queue) {
-    if (isEmpty(queue))
-        return INT_MIN;
-    int item = queue.array[queue.front];
-    queue.front = (queue.front + 1) % queue.array.length();
-    queue.size = queue.size - 1;
-    return item;
-}
-
-// Function to get front of queue
-int front(Queue queue) {
-    if (isEmpty(queue))
-        return INT_MIN;
-    return queue.array[queue.front];
-}
-
-// Function to get rear of queue
-int rear(Queue queue) {
-    if (isEmpty(queue))
-        return INT_MIN;
-    return queue.array[queue.rear];
-}
-
 float getTexData(int i, int j) {
     return texelFetch(trianglesTex, ivec2(i,j), 0).r;
 }
@@ -103,62 +43,6 @@ Triangle getTriangleData(int idx) {
     triangle.center = vec3(getTexData(idx,9), getTexData(idx,10), getTexData(idx,11));
     triangle.normal = vec3(getTexData(idx,12), getTexData(idx,13), getTexData(idx,14));
     return triangle;
-}
-
-// Calculate the distance between two points
-float dist(vec3 a, vec3 b) {
-    vec3 c = a - b;
-    return (c.x * c.x +
-            c.y * c.y +
-            c.z * c.z);
-}
-
-// Calculate the closest triangle to the ray
-Triangle nearest(vec3 nd) {
-
-    Queue queue = createQueue();
-    enqueue(queue, 0);
-    int i = 0;
-
-    bool first = true;
-    Triangle best;
-    float best_dist;
-
-    while (!isEmpty(queue)) {
-        int idx = dequeue(queue);
-
-        if (idx > (trianglesTexSize.x - 1))
-            continue;
-
-        Triangle root = getTriangleData(idx);
-        float d = dist(root.center, nd);
-        float dx = 0;
-        switch (i) {
-            case 0: dx = root.center.x - nd.x; break;
-            case 1: dx = root.center.y - nd.y; break;
-            case 2: dx = root.center.z - nd.z; break;
-        }
-
-        if (first || d < best_dist) {
-            best_dist = d;
-            best = root;
-            first = false;
-        }
-
-        // If chance of exact match is high
-        if (best_dist == 0)
-            return best;
-
-        i = (i + 1) % 3;
-
-        int idx_left  = 2 * idx + 1;
-        int idx_right = 2 * idx + 2;
-        if (dx > 0)
-            enqueue(queue, idx_left);
-        else
-            enqueue(queue, idx_right);
-    }
-    return best;
 }
 
 // Möller–Trumbore ray-triangle intersection algorithm
@@ -204,31 +88,31 @@ vec4 primaryReflections() {
     vec3 nWorldPos = normalize(worldIncident);
     vec3 nWorldNormal = normalize(worldNormal);
 
-    // Normal for textured scenes (by normal mapping)
+    // normal for textured scenes (by normal mapping)
     if (useNormalTex) {
         vec3 normalRGB = texture2D(normalTex, gl_TexCoord[0].xy).rgb;
         vec3 normalMap = (normalRGB * 2.0 - 1.0) * TBN;
         nWorldNormal = normalize(normalMap);
     }
 
-   // Material's reflectivity property
+    // material's reflectivity property
     if (reflectance > 0)
         nWorldNormal = min(nWorldNormal * reflectance, 1.0);
 
-    // Distance calculation
+    // distance calculation
     float viewDistance = length(worldIncident);
 
-    // Attenuation effect of sound in the water
+    // attenuation effect of sound in the water
     nWorldNormal = nWorldNormal * exp(-2 * attenuationCoeff * viewDistance);
 
-    // Normalize distance using range value (farPlane)
+    // normalize distance using range value (farPlane)
     float nViewDistance = viewDistance / farPlane;
 
     // presents the normal and depth data as matrix
     vec4 output = vec4(0, 0, 0, 1);
     if (nViewDistance <= 1) {
-        if (drawDepth)  output.y = nViewDistance;
-        if (drawNormal) output.z = abs(dot(nWorldPos, nWorldNormal));
+        if (drawDistance)   output.y = nViewDistance;
+        if (drawNormal)     output.z = abs(dot(nWorldPos, nWorldNormal));
     }
 
     return output;
@@ -251,13 +135,32 @@ vec4 secondaryReflections(vec4 firstR) {
     // perform ray-triangle intersection only for pixels with valid normal values
     vec4 output = vec4(0,0,0,1);
     if (firstR.z > 0) {
-        // find the closest triangle to the origin point
-        Triangle triangle = nearest(ray.origin);
 
-        // ray-triangle intersection
-        bool intersected = rayIntersectsTriangle(ray, triangle);
+        bool intersected = false;
+
+        // test ray-triangle intersection
+        Triangle tri;
+        for (int idx = 0; intersected == false, idx < trianglesTexSize.x; idx++) {
+            tri = getTriangleData(idx);
+            intersected = rayIntersectsTriangle(ray, tri);
+        }
+
+        // if intersected, calculates the distance and normal values
         if (intersected) {
-            output = vec4(1,1,1,1);
+
+            // distance calculation
+            float reverbDistance = length(ray.origin - tri.center);
+            float nReverbDistance = reverbDistance / farPlane;
+
+            // normal calculation
+            vec3 nTrianglePos = normalize(cameraPos - tri.center);
+            vec3 nTriangleNormal = normalize(tri.normal);
+
+            // presents the normal and distance data as matrix
+            if (nReverbDistance <= 1) {
+                if (drawDistance)   output.y = nReverbDistance;
+                if (drawNormal)     output.z = abs(dot(nTrianglePos, nTriangleNormal));
+            }
         }
    }
 
