@@ -1,6 +1,10 @@
 #include "ImageViewerCaptureTool.hpp"
+
+// C++ includes
 #include <iostream>
 #include <unistd.h>
+
+// OSG includes
 #include <osg/PolygonMode>
 
 namespace normal_depth_map {

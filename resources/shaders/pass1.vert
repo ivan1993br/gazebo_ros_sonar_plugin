@@ -16,9 +16,7 @@ void main() {
     worldNormal = mat3(modelWorld) * gl_Normal;
 
     // camera position in world space
-    // TODO: Check if these world coordinates are homogeneous
-    cameraPos = osg_ViewMatrixInverse[3].xyz;
-    // cameraPos = osg_ViewMatrixInverse[3].xyz / osg_ViewMatrixInverse[3].w;
+    cameraPos = osg_ViewMatrixInverse[3].xyz / osg_ViewMatrixInverse[3].w;
 
     // Normal maps are built in tangent space, interpolating the vertex normal and a RGB texture.
     // TBN is the conversion matrix between Tangent Space -> World Space.

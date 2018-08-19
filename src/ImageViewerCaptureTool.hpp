@@ -1,6 +1,7 @@
 #ifndef SIMULATION_NORMAL_DEPTH_MAP_SRC_IMAGECAPTURETOOL_HPP_
 #define SIMULATION_NORMAL_DEPTH_MAP_SRC_IMAGECAPTURETOOL_HPP_
 
+// OSG includes
 #include <osgViewer/Viewer>
 #include <osg/Texture2D>
 

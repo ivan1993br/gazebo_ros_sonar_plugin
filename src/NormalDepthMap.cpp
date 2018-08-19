@@ -1,12 +1,10 @@
-/*
- * NormalDepthMap.cpp
- *
- *  Created on: Mar 27, 2015
- *      Author: tiagotrocoli
- */
-
 #include "NormalDepthMap.hpp"
 
+// C++ includes
+#include <iostream>
+#include <algorithm>
+
+// OSG includes
 #include <osg/Program>
 #include <osg/ref_ptr>
 #include <osg/Shader>
@@ -14,9 +12,6 @@
 #include <osg/Uniform>
 #include <osgDB/FileUtils>
 #include <osg/ShapeDrawable>
-
-#include <iostream>
-#include <algorithm>
 
 namespace normal_depth_map {
 

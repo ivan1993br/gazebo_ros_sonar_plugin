@@ -1,12 +1,7 @@
-/*
- * NormalDepthMap.hpp
- *
- *  Created on: Mar 27, 2015
- *      Author: tiagotrocoli
- */
-
 #ifndef SIMULATION_NORMAL_DEPTH_MAP_SRC_NORMALDEPTHMAP_HPP_
 #define SIMULATION_NORMAL_DEPTH_MAP_SRC_NORMALDEPTHMAP_HPP_
+
+#include "Tools.hpp"
 
 // C++ includes
 #include <vector>
@@ -15,8 +10,6 @@
 #include <osg/Node>
 #include <osg/Group>
 #include <osg/ref_ptr>
-
-#include "Tools.hpp"
 
 namespace normal_depth_map {
 

@@ -1,5 +1,6 @@
-// C++ includes
 #include "Tools.hpp"
+
+// C++ includes
 #include <cmath>
 #include <iostream>
 
