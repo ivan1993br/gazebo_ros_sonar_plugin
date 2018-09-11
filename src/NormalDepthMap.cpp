@@ -96,24 +96,73 @@ void NormalDepthMap::addNodeChild(osg::ref_ptr<osg::Node> node) {
     // collect all triangles of scene
     _normalDepthMapNode->accept(_visitor);
 
-    // sort the scene's triangles in ascending order
+    // sort the scene's triangles in ascending order (for each model)
     std::vector<Triangle> triangles = _visitor.getTriangles();
-    std::sort(triangles.begin(), triangles.end());
+    std::vector<uint> trianglesRef = _visitor.getTrianglesRef();
 
-    std::cout << "Number of triangles: " << triangles.size() << std::endl;
+    // for (size_t idx = 0; idx < trianglesRef.size() - 1; idx++)
+        // std::sort(triangles.begin() + trianglesRef[idx], triangles.begin() + trianglesRef[idx + 1]);
+    // std::sort(triangles.begin(), triangles.end());
 
-    // convert triangles to osg texture
+    // convert triangles (data + reference) to osg texture
     osg::ref_ptr<osg::Texture2D> trianglesTexture;
-    triangles2texture(triangles, trianglesTexture);
+    triangles2texture(triangles, trianglesRef, trianglesTexture);
 
-    // pass the triangles data to GLSL as uniform
+    // pass the triangles (data + reference) to GLSL as uniform
     osg::ref_ptr<osg::StateSet> pass1state = _normalDepthMapNode->getChild(0)->getOrCreateStateSet();
+
     pass1state->addUniform(new osg::Uniform(osg::Uniform::SAMPLER_2D, "trianglesTex"));
     pass1state->setTextureAttributeAndModes(0, trianglesTexture, osg::StateAttribute::ON);
 
-    pass1state->addUniform(new osg::Uniform(osg::Uniform::FLOAT_VEC2, "trianglesTexSize"));
-    pass1state->getUniform("trianglesTexSize")->set(osg::Vec2(  trianglesTexture->getTextureWidth() * 1.0,
+    // pass1state->addUniform(new osg::Uniform(osg::Uniform::FLOAT_VEC3, "trianglesTexSize"));
+    // pass1state->getUniform("trianglesTexSize")->set(osg::Vec3(  trianglesRef.size() * 1.0,
+    //                                                             trianglesTexture->getTextureWidth() * 1.0,
+    //                                                             trianglesTexture->getTextureHeight() * 1.0));
+
+    pass1state->addUniform(new osg::Uniform(osg::Uniform::FLOAT_VEC3, "trianglesTexSize"));
+    pass1state->getUniform("trianglesTexSize")->set(osg::Vec3(  triangles.size() * 1.0,
+                                                                trianglesTexture->getTextureWidth() * 1.0,
                                                                 trianglesTexture->getTextureHeight() * 1.0));
+
+    std::cout << "Dimensions x: " << triangles.size() << std::endl;
+    std::cout << "Dimensions y: " << trianglesTexture->getTextureWidth() << std::endl;
+    std::cout << "Dimensions z: " << trianglesTexture->getTextureHeight() << std::endl;
+
+    // // pass the triangles reference to GLSL as uniform
+    // // // int dataArray[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    // // // size_t dataArraySize = sizeof(dataArray) / sizeof(dataArray[0]);
+    // // // std::vector<float> trianglesRefFloat(dataArray, dataArray + dataArraySize);
+
+    // std::cout << "Number of triangles: " << triangles.size() << std::endl;
+    // // for(size_t i = 0; i < trianglesRef.size(); i++)
+    //     // std::cout << "TriangleRef: " << trianglesRef[i] << std::endl;
+    std::vector<float> trianglesRefFloat(trianglesRef.begin(), trianglesRef.end());
+
+    for(size_t i = 0; i < trianglesRefFloat.size(); i++)
+        std::cout << "TrianglesRef: " << trianglesRefFloat[i] << std::endl;
+
+    // osg::ref_ptr<osg::Image> image = new osg::Image();
+    // image->allocateImage(trianglesRefFloat.size(), 1, 1, GL_RED, GL_FLOAT);
+    // image->setInternalTextureFormat(GL_R32F);
+
+    // for (size_t idx = 0; idx < trianglesRefFloat.size(); idx++)
+    //     setOSGImagePixel(image, 0, idx, 0, trianglesRefFloat[idx]);
+
+    // osg::ref_ptr<osg::Texture2D> trianglesRefTexture = new osg::Texture2D;
+    // trianglesRefTexture->setTextureSize(image->s(), image->t());
+    // trianglesRefTexture->setResizeNonPowerOfTwoHint(false);
+    // trianglesRefTexture->setUnRefImageDataAfterApply(true);
+    // trianglesRefTexture->setImage(image);
+
+
+    // pass1state->addUniform(new osg::Uniform(osg::Uniform::SAMPLER_2D, "trianglesRefTex"));
+    // pass1state->setTextureAttributeAndModes(1, trianglesRefTexture, osg::StateAttribute::ON);
+
+
+
+    // pass1state->addUniform(new osg::Uniform(osg::Uniform::FLOAT_VEC2, "trianglesRefTexSize"));
+    // pass1state->getUniform("trianglesRefTexSize")->set(osg::Vec2(   trianglesRefTexture->getTextureWidth() * 1.0,
+    //                                                                 trianglesRefTexture->getTextureHeight() * 1.0));
 }
 
 osg::ref_ptr<osg::Group> NormalDepthMap::createTheNormalDepthMapShaderNode(

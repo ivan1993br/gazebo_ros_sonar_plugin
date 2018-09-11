@@ -44,28 +44,34 @@ double underwaterSignalAttenuation( const double frequency,
 // convert triangles into texture (to be read by shader)
 void triangles2texture(
     std::vector<Triangle> triangles,
+    std::vector<uint> trianglesRef,
     osg::ref_ptr<osg::Texture2D> &texture)
 {
     osg::ref_ptr<osg::Image> image = new osg::Image();
-    image->allocateImage(triangles.size(),
+    image->allocateImage((triangles.size() + trianglesRef.size()),
                          triangles[0].getAllDataAsVector().size(),
                          1,
                          GL_RED,
                          GL_FLOAT);
     image->setInternalTextureFormat(GL_R32F);
 
-    for (size_t j = 0; j < triangles.size(); j++)
+    // triangles data
+    for(size_t j = 0; j < triangles.size(); j++)
     {
         std::vector<float> data = triangles[j].getAllDataAsVector();
         for (size_t i = 0; i < data.size(); i++)
             setOSGImagePixel(image, i, j, 0, data[i]);
     }
 
+    // triangles reference
+    for (size_t i = triangles.size(); i < (triangles.size() + trianglesRef.size()); i++)
+        setOSGImagePixel(image, 0, i, 0, (float)trianglesRef[i]);
+
+    // set texture
     texture = new osg::Texture2D;
     texture->setTextureSize(image->s(), image->t());
     texture->setResizeNonPowerOfTwoHint(false);
     texture->setUnRefImageDataAfterApply(true);
     texture->setImage(image);
 }
-
 }

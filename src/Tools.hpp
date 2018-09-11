@@ -3,6 +3,7 @@
 
 // C++ includes
 #include <vector>
+#include <iostream>
 
 // OSG includes
 #include <osg/Node>
@@ -71,9 +72,9 @@ namespace normal_depth_map {
             return output;
         }
 
-        bool operator<(const Triangle &obj_1)
+        bool operator<(const Triangle &obj)
         {
-            return data[3] < obj_1.data[3];
+            return data[3] < obj.data[3];
         }
     };
 
@@ -101,23 +102,27 @@ namespace normal_depth_map {
                 triangles.push_back(Triangle(v1_w, v2_w, v3_w));
             };
         };
+        osg::TriangleFunctor<WorldTriangle> tf;
+        std::vector<uint> trianglesRef;
 
       public:
-        osg::TriangleFunctor<WorldTriangle> tf;
-
         TrianglesVisitor()
         {
             setTraversalMode(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN);
+            trianglesRef.push_back(0);
         };
 
         void apply(osg::Geode &geode)
         {
             tf.local2world = osg::computeLocalToWorld(this->getNodePath());
-            for (size_t i = 0; i < geode.getNumDrawables(); ++i)
-                geode.getDrawable(i)->accept(tf);
+            for (size_t idx = 0; idx < geode.getNumDrawables(); ++idx) {
+                geode.getDrawable(idx)->accept(tf);
+                trianglesRef.push_back(tf.triangles.size());
+            }
         }
 
         std::vector<Triangle> getTriangles() { return tf.triangles; };
+        std::vector<uint> getTrianglesRef() { return trianglesRef; };
     };
 
     /**
@@ -136,8 +141,10 @@ namespace normal_depth_map {
                      && (x < (unsigned int)image->t())
                      && (channel < (unsigned int)image->r());
 
-        if (!valid)
+        if (!valid) {
+            std::cout << "Not valid" << std::endl;
             return;
+        }
 
         uint step = (x * image->s() + y) * image->r() + channel;
 
@@ -152,6 +159,7 @@ namespace normal_depth_map {
      */
     void triangles2texture(
         std::vector<Triangle> triangles,
+        std::vector<uint> trianglesRef,
         osg::ref_ptr<osg::Texture2D> &texture);
 }
 
