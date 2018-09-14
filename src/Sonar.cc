@@ -104,6 +104,7 @@ Sonar::~Sonar()
 void Sonar::Load(sdf::ElementPtr _sdf)
 {
   Camera::Load(_sdf);
+
 }
 
 //////////////////////////////////////////////////
@@ -131,9 +132,25 @@ void Sonar::CreateLaserTexture(const std::string &_textureName)
 {
   this->camera->yaw(Ogre::Radian(this->horzHalfAngle));
 
+  Ogre::String lNameOfResourceGroup = "Mission 1 : Deliver Tom";
+	{
+		Ogre::ResourceGroupManager& lRgMgr = Ogre::ResourceGroupManager::getSingleton();
+		lRgMgr.createResourceGroup(lNameOfResourceGroup);
+
+		// The function 'initialiseResourceGroup' parses scripts if any in the locations.
+		lRgMgr.initialiseResourceGroup(lNameOfResourceGroup);
+
+		// Files that can be loaded are loaded.
+		lRgMgr.loadResourceGroup(lNameOfResourceGroup);
+	}
+
+  // Camera::CreateRenderTexture(_textureName);
+
   this->CreateOrthoCam();
 
   this->dataPtr->textureCount = this->cameraCount;
+
+  gzwarn << "Num camera " << this->cameraCount << std::endl;
 
   if (this->dataPtr->textureCount == 2)
   {
@@ -153,68 +170,78 @@ void Sonar::CreateLaserTexture(const std::string &_textureName)
   for (unsigned int i = 0; i < this->dataPtr->textureCount; ++i)
   {
     std::stringstream texName;
+    gzwarn << "Image " << this->ImageHeight() << std::endl;
     texName << _textureName << "first_pass_" << i;
+    if(1)
+    {gzwarn << " Que porcaria" << Ogre::TextureManager::getSingleton().getResourceType() 	<< std::endl;}
+
+    // Ogre::TexturePtr  testeText= Ogre::TextureManager::getSingleton().createManual(
+    //   "BlaBla", "General", Ogre::TEX_TYPE_2D,
+    //   90, 120, 0,
+    //   Ogre::PF_FLOAT32_RGB, Ogre::TU_RENDERTARGET );
+
     this->dataPtr->firstPassTextures[i] =
       Ogre::TextureManager::getSingleton().createManual(
-      texName.str(), "General", Ogre::TEX_TYPE_2D,
-      this->ImageWidth(), this->ImageHeight(), 0,
+      "MyFirstRtt", lNameOfResourceGroup, Ogre::TEX_TYPE_2D,
+      512, 512, 0,
       Ogre::PF_FLOAT32_RGB, Ogre::TU_RENDERTARGET).getPointer();
 
-    this->Set1stPassTarget(
-        this->dataPtr->firstPassTextures[i]->getBuffer()->getRenderTarget(), i);
+    // this->Set1stPassTarget(
+    //     this->dataPtr->firstPassTextures[i]->getBuffer()->getRenderTarget(), i);
 
-    this->dataPtr->firstPassTargets[i]->setAutoUpdated(false);
+    // this->dataPtr->firstPassTargets[i]->setAutoUpdated(false);
   }
 
   this->dataPtr->matFirstPass = (Ogre::Material*)(
   Ogre::MaterialManager::getSingleton().getByName("Gazebo/LaserScan1st").get());
 
+
   this->dataPtr->matFirstPass->load();
-  this->dataPtr->matFirstPass->setCullingMode(Ogre::CULL_NONE);
+  // this->dataPtr->matFirstPass->setCullingMode(Ogre::CULL_NONE);
 
-  this->dataPtr->secondPassTexture =
-      Ogre::TextureManager::getSingleton().createManual(
-      _textureName + "second_pass",
-      "General",
-      Ogre::TEX_TYPE_2D,
-      this->dataPtr->w2nd, this->dataPtr->h2nd, 0,
-      Ogre::PF_FLOAT32_RGB,
-      Ogre::TU_RENDERTARGET).getPointer();
+  // this->dataPtr->secondPassTexture =
+  //     Ogre::TextureManager::getSingleton().createManual(
+  //     _textureName + "second_pass",
+  //     "General",
+  //     Ogre::TEX_TYPE_2D,
+  //     this->dataPtr->w2nd, this->dataPtr->h2nd, 0,
+  //     Ogre::PF_FLOAT32_RGB,
+  //     Ogre::TU_RENDERTARGET).getPointer();
 
-  this->Set2ndPassTarget(
-      this->dataPtr->secondPassTexture->getBuffer()->getRenderTarget());
+  // this->Set2ndPassTarget(
+  //     this->dataPtr->secondPassTexture->getBuffer()->getRenderTarget());
 
-  this->dataPtr->secondPassTarget->setAutoUpdated(false);
+  // this->dataPtr->secondPassTarget->setAutoUpdated(false);
 
-  this->dataPtr->matSecondPass = (Ogre::Material*)(
-  Ogre::MaterialManager::getSingleton().getByName("Gazebo/LaserScan2nd").get());
+  // this->dataPtr->matSecondPass = (Ogre::Material*)(
+  // Ogre::MaterialManager::getSingleton().getByName("Gazebo/LaserScan2nd").get());
 
-  this->dataPtr->matSecondPass->load();
+  // this->dataPtr->matSecondPass->load();
 
-  Ogre::TextureUnitState *texUnit;
-  for (unsigned int i = 0; i < this->dataPtr->textureCount; ++i)
-  {
-    unsigned int texIndex = this->dataPtr->texCount++;
-    Ogre::Technique *technique = this->dataPtr->matSecondPass->getTechnique(0);
-    GZ_ASSERT(technique, "Sonar material script error: technique not found");
+  // Ogre::TextureUnitState *texUnit;
+  // for (unsigned int i = 0; i < this->dataPtr->textureCount; ++i)
+  // {
+  //   unsigned int texIndex = this->dataPtr->texCount++;
+  //   Ogre::Technique *technique = this->dataPtr->matSecondPass->getTechnique(0);
+  //   GZ_ASSERT(technique, "Sonar material script error: technique not found");
 
-    Ogre::Pass *pass = technique->getPass(0);
-    GZ_ASSERT(pass, "Sonar material script error: pass not found");
+  //   Ogre::Pass *pass = technique->getPass(0);
+  //   GZ_ASSERT(pass, "Sonar material script error: pass not found");
 
-    if (!pass->getTextureUnitState(
-        this->dataPtr->firstPassTextures[i]->getName()))
-    {
-      texUnit = pass->createTextureUnitState(
-            this->dataPtr->firstPassTextures[i]->getName(), texIndex);
+  //   if (!pass->getTextureUnitState(
+  //       this->dataPtr->firstPassTextures[i]->getName()))
+  //   {
+  //     texUnit = pass->createTextureUnitState(
+  //           this->dataPtr->firstPassTextures[i]->getName(), texIndex);
 
-      this->dataPtr->texIdx.push_back(texIndex);
+  //     this->dataPtr->texIdx.push_back(texIndex);
 
-      texUnit->setTextureFiltering(Ogre::TFO_NONE);
-      texUnit->setTextureAddressingMode(Ogre::TextureUnitState::TAM_MIRROR);
-    }
-  }
+  //     texUnit->setTextureFiltering(Ogre::TFO_NONE);
+  //     texUnit->setTextureAddressingMode(Ogre::TextureUnitState::TAM_MIRROR);
+  //   }
+  // }
 
-  this->CreateCanvas();
+  // this->CreateCanvas();
 }
 
 //////////////////////////////////////////////////

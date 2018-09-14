@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+<gazebo>
+
+    <plugin name="SonarVisual" filename="libSonarVisual.so" >
+        <horizontal_fov>${hfov}</horizontal_fov>
+        <image>
+            <width>100</width>
+            <height>100</height>
+            <format>R8G8B8</format>
+        </image>
+        <clip>
+            <near>0.1</near>
+            <far>3000</far>
+        </clip>
+        <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.1</stddev>
+        </noise>
+    </plugin>    
+
+</gazebo>
+
+</robot>
