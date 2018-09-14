@@ -41,7 +41,11 @@ set(ROSLINT_CPP_OPTS "--extensions=hpp,cpp,c,hh,cc,h")
 
 set(GAZEBO_ROS_SONAR_PLUGIN_SRCS
   src/Sonar.cc
-  src/ModelPlugin.cc)
+  src/SensorPlugin.cc)
+<<<<<<< HEAD
+>>>>>>> 3db1d56... Modification of main class to sonar
+=======
+>>>>>>> 7c8862b... 2
  # src/ImageViewerCaptureTool.cc
  # src/NormalDepthMap.cc
  # src/Tools.cc)
